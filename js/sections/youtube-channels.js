@@ -141,6 +141,10 @@ function renderYoutubeCard(c) {
           <div class="metric-value" style="color:var(--green)">€${parseFloat(c.receita_mes||0).toFixed(2)}</div>
           <div class="metric-label">Receita/mês</div>
         </div>
+        ${c.adsense_rpm ? `<div class="metric-item">
+          <div class="metric-value" style="color:var(--yellow)">€${parseFloat(c.adsense_rpm).toFixed(2)}</div>
+          <div class="metric-label">${info.rpm_label}</div>
+        </div>` : ''}
       </div>
 
       ${c.canal_id ? `<div class="text-sm text-muted" style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-link" style="color:var(--accent)"></i> ID: ${c.canal_id}</div>` : ''}
