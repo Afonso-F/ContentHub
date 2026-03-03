@@ -8,6 +8,7 @@ const app = (() => {
     avatares:       { title: 'Avatares',          fn: 'renderAvatares' },
     youtube:        { title: 'Canais de Vídeo',   fn: 'renderYoutube' },
     musicos:        { title: 'Músicos & Bandas',  fn: 'renderMusicos' },
+    podcasts:       { title: 'Podcasts',          fn: 'renderPodcasts' },
     criar:          { title: 'Criar Post',        fn: 'renderCriarPost' },
     videos:         { title: 'Vídeos Curtos',     fn: 'renderVideosCurtos' },
     fila:           { title: 'Fila / Agenda',     fn: 'renderFila' },

@@ -523,6 +523,69 @@ const DB = (() => {
     }
   }
 
+  /* ── Podcasts ── */
+  async function getPodcasts({ avatar_id } = {}) {
+    if (!_client) return { data: [], error: 'not connected' };
+    let q = _client.from('podcasts').select('*').order('criado_em', { ascending: false });
+    if (avatar_id) q = q.eq('avatar_id', avatar_id);
+    return q;
+  }
+
+  async function upsertPodcast(podcast) {
+    if (!_client) return { error: 'not connected' };
+    return _client.from('podcasts').upsert(podcast).select().single();
+  }
+
+  async function deletePodcast(id) {
+    if (!_client) return { error: 'not connected' };
+    return _client.from('podcasts').delete().eq('id', id);
+  }
+
+  /* ── Episódios ── */
+  async function getEpisodios(podcast_id) {
+    if (!_client) return { data: [], error: 'not connected' };
+    return _client.from('episodios').select('*').eq('podcast_id', podcast_id).order('numero', { ascending: false });
+  }
+
+  async function upsertEpisodio(ep) {
+    if (!_client) return { error: 'not connected' };
+    return _client.from('episodios').upsert(ep).select().single();
+  }
+
+  async function deleteEpisodio(id) {
+    if (!_client) return { error: 'not connected' };
+    return _client.from('episodios').delete().eq('id', id);
+  }
+
+  /* Upload de áudio para episódio */
+  async function uploadPodcastAudio(file, episodioId) {
+    if (!_client) return { error: 'not connected' };
+    try {
+      const ext  = file.name.split('.').pop() || 'mp3';
+      const path = `${episodioId || Date.now()}.${ext}`;
+      const { error } = await _client.storage.from('podcast-audio').upload(path, file, { contentType: file.type, upsert: true });
+      if (error) return { error };
+      const { data: urlData } = _client.storage.from('podcast-audio').getPublicUrl(path);
+      return { url: urlData?.publicUrl };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
+  /* Upload de capa de podcast (dataUrl) */
+  async function uploadPodcastCover(dataUrl, podcastId) {
+    if (!_client) return { error: 'not connected' };
+    const result = await _toBlob(dataUrl);
+    if (result.externalUrl) return { url: result.externalUrl };
+    const { blob, mime } = result;
+    const ext  = mime.split('/')[1]?.split('+')[0] || 'jpg';
+    const path = `${podcastId || Date.now()}.${ext}`;
+    const { error } = await _client.storage.from('podcast-covers').upload(path, blob, { contentType: mime, upsert: true });
+    if (error) return { error };
+    const { data: urlData } = _client.storage.from('podcast-covers').getPublicUrl(path);
+    return { url: urlData?.publicUrl };
+  }
+
   /* Posts de uma campanha específica */
   async function getCampanhaPosts(campanha_id) {
     if (!_client) return { data: [], error: 'not connected' };
@@ -532,5 +595,5 @@ const DB = (() => {
       .order('agendado_para', { ascending: true });
   }
 
-  return { init, client, ready, getAvatares, upsertAvatar, deleteAvatar, updateAvatarRefImages, getPosts, upsertPost, deletePost, updatePostStatus, getPublicados, getAnalytics, getContas, upsertConta, deleteConta, signIn, signOut, getSession, onAuthStateChange, uploadPostImage, uploadAvatarReferenceImage, uploadPostVideo, uploadPostVideoFromUrl, getYoutubeChannels, upsertYoutubeChannel, deleteYoutubeChannel, updateYoutubeRefImages, uploadYoutubeReferenceImage, getYoutubeVideos, upsertYoutubeVideo, deleteYoutubeVideo, getMusicos, upsertMusico, deleteMusico, getMusicoTracks, upsertMusicoTrack, deleteMusicoTrack, getFanslyStats, upsertFanslyStats, getDespesas, upsertDespesa, deleteDespesa, getCampanhas, upsertCampanha, deleteCampanha, getCampanhaPosts, getPostTemplates, upsertPostTemplate, deletePostTemplate, getPromptLibrary, upsertPromptEntry, deletePromptEntry, incrementPromptUsage, uploadLibraryImage, getOnlyfansStats, upsertOnlyfansStats, getPatreonStats, upsertPatreonStats, getTwitchStats, upsertTwitchStats, getAfiliados, upsertAfiliado, deleteAfiliado, getVendasDiretas, upsertVendaDireta, deleteVendaDireta, getContasBancarias, upsertContaBancaria, deleteContaBancaria, getLevantamentos, upsertLevantamento };
+  return { init, client, ready, getAvatares, upsertAvatar, deleteAvatar, updateAvatarRefImages, getPosts, upsertPost, deletePost, updatePostStatus, getPublicados, getAnalytics, getContas, upsertConta, deleteConta, signIn, signOut, getSession, onAuthStateChange, uploadPostImage, uploadAvatarReferenceImage, uploadPostVideo, uploadPostVideoFromUrl, getYoutubeChannels, upsertYoutubeChannel, deleteYoutubeChannel, updateYoutubeRefImages, uploadYoutubeReferenceImage, getYoutubeVideos, upsertYoutubeVideo, deleteYoutubeVideo, getMusicos, upsertMusico, deleteMusico, getMusicoTracks, upsertMusicoTrack, deleteMusicoTrack, getFanslyStats, upsertFanslyStats, getDespesas, upsertDespesa, deleteDespesa, getCampanhas, upsertCampanha, deleteCampanha, getCampanhaPosts, getPostTemplates, upsertPostTemplate, deletePostTemplate, getPromptLibrary, upsertPromptEntry, deletePromptEntry, incrementPromptUsage, uploadLibraryImage, getOnlyfansStats, upsertOnlyfansStats, getPatreonStats, upsertPatreonStats, getTwitchStats, upsertTwitchStats, getAfiliados, upsertAfiliado, deleteAfiliado, getVendasDiretas, upsertVendaDireta, deleteVendaDireta, getContasBancarias, upsertContaBancaria, deleteContaBancaria, getLevantamentos, upsertLevantamento, getPodcasts, upsertPodcast, deletePodcast, getEpisodios, upsertEpisodio, deleteEpisodio, uploadPodcastAudio, uploadPodcastCover };
 })();
