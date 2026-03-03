@@ -261,30 +261,18 @@ async function testSupabase() {
   }
 }
 
-async function testFalAi() {
+function testFalAi() {
   const key = document.getElementById('cfg-falai')?.value.trim();
   if (!key) { app.toast('Introduz uma API key fal.ai primeiro', 'warning'); return; }
   const el = document.getElementById('falai-test-result');
-  el.textContent = 'A testar…';
-  try {
-    // Usar endpoint síncrono (FLUX Schnell) — suporta CORS no browser ao contrário do endpoint de fila
-    const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
-      method: 'POST',
-      headers: { 'Authorization': `Key ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: 'test', image_size: 'square', num_images: 1 }),
-    });
-    if (res.status === 401 || res.status === 403) throw new Error('Chave inválida ou sem permissões.');
-    el.innerHTML = '<span style="color:var(--green)"><i class="fa-solid fa-circle-check"></i> Chave válida!</span>';
-    app.toast('fal.ai OK!', 'success');
-  } catch (e) {
-    if (e.message === 'Failed to fetch') {
-      // CORS bloqueado no browser — a chave pode ser válida na mesma
-      el.innerHTML = '<span style="color:var(--yellow)"><i class="fa-solid fa-triangle-exclamation"></i> Não foi possível validar no browser. A chave foi guardada — testa gerando um avatar.</span>';
-      app.toast('fal.ai: chave guardada (usa "Gerar Avatar" para confirmar)', 'warning');
-    } else {
-      el.innerHTML = `<span style="color:var(--red)"><i class="fa-solid fa-circle-xmark"></i> Erro: ${e.message}</span>`;
-      app.toast('Erro fal.ai: ' + e.message, 'error');
-    }
+  // A API fal.ai bloqueia CORS em browsers — não é possível validar via rede
+  // Valida só o formato: chave com pelo menos 20 caracteres sem espaços
+  if (key.length >= 20 && !key.includes(' ')) {
+    el.innerHTML = '<span style="color:var(--green)"><i class="fa-solid fa-circle-check"></i> Chave guardada! Gera um avatar para confirmar que está correcta.</span>';
+    app.toast('fal.ai: chave guardada', 'success');
+  } else {
+    el.innerHTML = '<span style="color:var(--red)"><i class="fa-solid fa-circle-xmark"></i> Formato de chave inválido.</span>';
+    app.toast('Formato de chave fal.ai inválido', 'error');
   }
 }
 
