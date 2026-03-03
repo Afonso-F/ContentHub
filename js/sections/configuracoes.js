@@ -261,24 +261,18 @@ async function testSupabase() {
   }
 }
 
-async function testFalAi() {
-  const key   = document.getElementById('cfg-falai')?.value.trim();
-  const model = document.getElementById('cfg-video-model')?.value || 'fal-ai/wan/v2.1/t2v-480p';
+function testFalAi() {
+  const key = document.getElementById('cfg-falai')?.value.trim();
   if (!key) { app.toast('Introduz uma API key fal.ai primeiro', 'warning'); return; }
   const el = document.getElementById('falai-test-result');
-  el.textContent = 'A testar…';
-  try {
-    // Verificar que a chave é válida fazendo um request de status (não gera vídeo)
-    const res = await fetch(`https://queue.fal.run/${model}/requests`, {
-      method: 'GET',
-      headers: { 'Authorization': `Key ${key}` }
-    });
-    if (res.status === 401 || res.status === 403) throw new Error('Chave inválida ou sem permissões.');
-    el.innerHTML = '<span style="color:var(--green)"><i class="fa-solid fa-circle-check"></i> Chave válida!</span>';
-    app.toast('fal.ai OK!', 'success');
-  } catch (e) {
-    el.innerHTML = `<span style="color:var(--red)"><i class="fa-solid fa-circle-xmark"></i> Erro: ${e.message}</span>`;
-    app.toast('Erro fal.ai: ' + e.message, 'error');
+  // A API fal.ai bloqueia CORS em browsers — não é possível validar via rede
+  // Valida só o formato: chave com pelo menos 20 caracteres sem espaços
+  if (key.length >= 20 && !key.includes(' ')) {
+    el.innerHTML = '<span style="color:var(--green)"><i class="fa-solid fa-circle-check"></i> Chave guardada! Gera um avatar para confirmar que está correcta.</span>';
+    app.toast('fal.ai: chave guardada', 'success');
+  } else {
+    el.innerHTML = '<span style="color:var(--red)"><i class="fa-solid fa-circle-xmark"></i> Formato de chave inválido.</span>';
+    app.toast('Formato de chave fal.ai inválido', 'error');
   }
 }
 

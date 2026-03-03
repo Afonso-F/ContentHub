@@ -60,7 +60,13 @@ const AI = (() => {
 
   /* ── Imagem: fal.ai (se configurado) ou Pollinations.ai (grátis) ── */
   async function generateImage(prompt, { aspectRatio = '1:1' } = {}) {
-    if (falKey()) return _generateImageFal(prompt, { aspectRatio });
+    if (falKey()) {
+      try {
+        return await _generateImageFal(prompt, { aspectRatio });
+      } catch (e) {
+        console.warn('fal.ai falhou, a usar Pollinations como fallback:', e.message);
+      }
+    }
     return _generateImagePollinations(prompt, { aspectRatio });
   }
 
