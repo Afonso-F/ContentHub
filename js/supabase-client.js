@@ -241,18 +241,24 @@ const DB = (() => {
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       return { blob: new Blob([bytes], { type: mime }), mime };
     }
-    // URL externa (ex: fal.ai) — faz fetch
-    const res = await fetch(src);
-    if (!res.ok) throw new Error(`Erro ao obter imagem (${res.status})`);
-    const blob = await res.blob();
-    return { blob, mime: blob.type || 'image/jpeg' };
+    // URL externa (ex: fal.ai) — faz fetch; se CORS bloquear devolve externalUrl
+    try {
+      const res = await fetch(src, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      return { blob, mime: blob.type || 'image/jpeg' };
+    } catch (_) {
+      return { externalUrl: src };
+    }
   }
 
   /* Upload de imagem de referência para um avatar */
   async function uploadAvatarReferenceImage(dataUrl, avatarId) {
     if (!_client) return { error: 'not connected' };
-    let blob, mime;
-    try { ({ blob, mime } = await _toBlob(dataUrl)); } catch (e) { return { error: e.message }; }
+    const result = await _toBlob(dataUrl);
+    // Se CORS impediu o fetch, guarda a URL externa directamente
+    if (result.externalUrl) return { url: result.externalUrl };
+    const { blob, mime } = result;
     const ext  = mime.split('/')[1]?.split('+')[0] || 'jpg';
     const path = `${avatarId}/${Date.now()}.${ext}`;
 
@@ -265,8 +271,9 @@ const DB = (() => {
 
   async function uploadYoutubeReferenceImage(dataUrl, channelId) {
     if (!_client) return { error: 'not connected' };
-    let blob, mime;
-    try { ({ blob, mime } = await _toBlob(dataUrl)); } catch (e) { return { error: e.message }; }
+    const result = await _toBlob(dataUrl);
+    if (result.externalUrl) return { url: result.externalUrl };
+    const { blob, mime } = result;
     const ext  = mime.split('/')[1]?.split('+')[0] || 'jpg';
     const path = `youtube/${channelId}/${Date.now()}.${ext}`;
 
