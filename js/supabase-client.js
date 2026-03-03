@@ -231,19 +231,32 @@ const DB = (() => {
     return { url: urlData?.publicUrl };
   }
 
+  /* Converte dataUrl ou URL externa para Blob + mime */
+  async function _toBlob(src) {
+    if (src.startsWith('data:')) {
+      const [meta, b64] = src.split(',');
+      const mime = meta.match(/:(.*?);/)[1];
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return { blob: new Blob([bytes], { type: mime }), mime };
+    }
+    // URL externa (ex: fal.ai) — faz fetch
+    const res = await fetch(src);
+    if (!res.ok) throw new Error(`Erro ao obter imagem (${res.status})`);
+    const blob = await res.blob();
+    return { blob, mime: blob.type || 'image/jpeg' };
+  }
+
   /* Upload de imagem de referência para um avatar */
   async function uploadAvatarReferenceImage(dataUrl, avatarId) {
     if (!_client) return { error: 'not connected' };
-    const [meta, b64] = dataUrl.split(',');
-    const mime = meta.match(/:(.*?);/)[1];
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mime });
+    let blob, mime;
+    try { ({ blob, mime } = await _toBlob(dataUrl)); } catch (e) { return { error: e.message }; }
     const ext  = mime.split('/')[1]?.split('+')[0] || 'jpg';
     const path = `${avatarId}/${Date.now()}.${ext}`;
 
-    const { error } = await _client.storage.from('avatar-references').upload(path, blob, { contentType: mime, upsert: false });
+    const { error } = await _client.storage.from('avatar-references').upload(path, blob, { contentType: mime, upsert: true });
     if (error) return { error };
 
     const { data: urlData } = _client.storage.from('avatar-references').getPublicUrl(path);
@@ -252,16 +265,12 @@ const DB = (() => {
 
   async function uploadYoutubeReferenceImage(dataUrl, channelId) {
     if (!_client) return { error: 'not connected' };
-    const [meta, b64] = dataUrl.split(',');
-    const mime = meta.match(/:(.*?);/)[1];
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mime });
+    let blob, mime;
+    try { ({ blob, mime } = await _toBlob(dataUrl)); } catch (e) { return { error: e.message }; }
     const ext  = mime.split('/')[1]?.split('+')[0] || 'jpg';
     const path = `youtube/${channelId}/${Date.now()}.${ext}`;
 
-    const { error } = await _client.storage.from('avatar-references').upload(path, blob, { contentType: mime, upsert: false });
+    const { error } = await _client.storage.from('avatar-references').upload(path, blob, { contentType: mime, upsert: true });
     if (error) return { error };
 
     const { data: urlData } = _client.storage.from('avatar-references').getPublicUrl(path);
