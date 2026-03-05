@@ -223,13 +223,7 @@ async function gerarPromptDeConceito() {
   const conceito = document.getElementById('bib-concept-text')?.value.trim();
   if (!conceito) { app.toast('Descreve primeiro o prompt que queres criar', 'warning'); return; }
 
-  const btn      = document.querySelector('#bib-concept-panel .btn-primary');
-  const progress = document.getElementById('bib-concept-progress');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
-  if (progress) progress.textContent = 'A interpretar conceito…';
-
-  try {
-    const prompt = `Cria uma entrada de biblioteca de prompts para geração de imagens com IA baseada nesta ideia: "${conceito}"
+  await _runConceptGen('bib', `Cria uma entrada de biblioteca de prompts para geração de imagens com IA baseada nesta ideia: "${conceito}"
 
 Responde APENAS com JSON válido, sem markdown, sem backticks:
 {
@@ -238,47 +232,25 @@ Responde APENAS com JSON válido, sem markdown, sem backticks:
   "categoria": "uma de: geral, lifestyle, fitness, moda, comida, viagens, beleza, motivacional, anime, natureza, retrato, produto, humor, nsfw",
   "prompt": "Prompt detalhado em inglês para geração de imagem/vídeo com IA — mínimo 30 palavras, máximo 100 palavras. Inclui: sujeito, ambiente, iluminação, estilo fotográfico, humor, detalhes visuais",
   "tags": ["tag1", "tag2", "tag3"]
-}`;
-
-    const raw  = await AI.generateText(prompt, { temperature: 0.85, maxTokens: 400 });
-    const m    = raw.match(/\{[\s\S]*\}/);
-    const data = JSON.parse(m ? m[0] : raw);
-
-    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
-    set('bib-f-titulo', data.titulo);
-    set('bib-f-prompt', data.prompt || '');
-    if (data.tags && Array.isArray(data.tags)) set('bib-f-tags', data.tags.join(', '));
-
-    if (data.tipo) {
-      const tipoEl = document.getElementById('bib-f-tipo');
-      if (tipoEl) tipoEl.value = data.tipo;
-    }
-    if (data.categoria) {
-      const catEl = document.getElementById('bib-f-cat');
-      if (catEl) catEl.value = data.categoria;
-    }
-
-    if (progress) progress.textContent = '';
-    document.getElementById('bib-concept-panel').classList.remove('open');
-    app.toast(`Prompt "${data.titulo}" gerado!`, 'success');
-
-  } catch (e) {
-    if (progress) progress.textContent = '';
-    app.toast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
-  }
+}`, data => {
+    _setField('bib-f-titulo', data.titulo);
+    _setField('bib-f-prompt', data.prompt || '');
+    if (data.tags && Array.isArray(data.tags)) _setField('bib-f-tags', data.tags.join(', '));
+    if (data.tipo)     _setField('bib-f-tipo', data.tipo);
+    if (data.categoria) _setField('bib-f-cat', data.categoria);
+    return `Prompt "${data.titulo}" gerado!`;
+  }, { temperature: 0.85, maxTokens: 400 });
 }
 
 /* ── Formulário ── */
 function openAddPromptModal(existing) {
   const body = `
     <div class="concept-toolbar" style="margin-bottom:0">
-      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('bib-concept-panel').classList.toggle('open')">
+      <button id="concept-toggle-btn-bib" class="btn btn-sm btn-ghost" onclick="_toggleConceptBar('bib')">
         <i class="fa-solid fa-wand-magic-sparkles"></i> Descrever com IA
       </button>
     </div>
-    <div class="concept-panel" id="bib-concept-panel">
+    <div class="concept-panel" id="concept-panel-bib">
       <div class="concept-panel-label"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> Descreve a ideia — a IA cria o prompt</div>
       <textarea id="bib-concept-text" class="form-control" rows="2"
         placeholder="Ex: foto de lifestyle minimalista de mulher a ler num café em Lisboa, luz natural, tons neutros…"></textarea>

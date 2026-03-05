@@ -2,6 +2,8 @@
    sections/musicos.js — Gestão de músicos e bandas
    ============================================================ */
 
+let _musicosCache = [];
+
 const MUSIC_PLATFORMS = {
   spotify:      { label: 'Spotify',       icon: 'fa-brands fa-spotify',       color: '#1db954' },
   apple_music:  { label: 'Apple Music',   icon: 'fa-brands fa-apple',         color: '#fc3c44' },
@@ -12,11 +14,11 @@ const MUSIC_PLATFORMS = {
 };
 
 async function renderMusicos(container) {
-  let musicos = [];
   if (DB.ready()) {
     const { data } = await DB.getMusicos();
-    musicos = data || [];
+    _musicosCache = data || [];
   }
+  const musicos = _musicosCache;
 
   container.innerHTML = `
     <div class="section-header">
@@ -112,6 +114,9 @@ function renderMusicoCard(m) {
         <button class="btn btn-sm btn-secondary flex-1" onclick="openMusicoStatsModal('${m.id}','${(m.nome||'').replace(/'/g,"\\'")}')">
           <i class="fa-solid fa-chart-line"></i> Stats
         </button>
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="openMusicoLinksModal('${m.id}','${(m.nome||'').replace(/'/g,"\\'")}')">
+          <i class="fa-solid fa-link"></i>
+        </button>
         <button class="btn btn-sm btn-secondary btn-icon" onclick="openMusicoModal('${m.id}')" title="Editar">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -124,12 +129,11 @@ function renderMusicoCard(m) {
 
 /* ── Modal Criar/Editar ── */
 async function openMusicoModal(id) {
-  let musicos = [];
-  if (DB.ready()) {
+  if (!_musicosCache.length && DB.ready()) {
     const { data } = await DB.getMusicos();
-    musicos = data || [];
+    _musicosCache = data || [];
   }
-  const m = id ? musicos.find(x => String(x.id) === String(id)) : null;
+  const m = id ? _musicosCache.find(x => String(x.id) === String(id)) : null;
   const isNew = !m;
   const plats = m?.plataformas || [];
 
@@ -232,13 +236,7 @@ async function gerarMusicoDeConceito() {
   const conceito = document.getElementById('concept-text-musico')?.value.trim();
   if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
 
-  const btn      = document.querySelector('#concept-panel-musico .btn-primary');
-  const progress = document.getElementById('concept-progress-musico');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
-  if (progress) progress.textContent = 'A interpretar conceito…';
-
-  try {
-    const prompt = `Cria um perfil completo de músico ou banda baseado nesta descrição: "${conceito}"
+  await _runConceptGen('musico', `Cria um perfil completo de músico ou banda baseado nesta descrição: "${conceito}"
 
 Responde APENAS com JSON válido, sem markdown, sem backticks:
 {
@@ -248,47 +246,85 @@ Responde APENAS com JSON válido, sem markdown, sem backticks:
   "plataformas": ["spotify", "apple_music", "youtube_music", "soundcloud", "deezer", "tidal"],
   "notas": "Biografia curta em português: origem, estilo, inspirações, conquistas — 2-3 frases"
 }
-Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`;
-
-    const raw  = await AI.generateText(prompt, { temperature: 0.8 });
-    const m    = raw.match(/\{[\s\S]*\}/);
-    const data = JSON.parse(m ? m[0] : raw);
-
-    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
-    set('mu-nome',   data.nome);
-    set('mu-genero', data.genero || '');
-    set('mu-notas',  data.notas  || '');
-
-    if (data.tipo) {
-      const tipoEl = document.getElementById('mu-tipo');
-      if (tipoEl) tipoEl.value = data.tipo;
-    }
-
-    // Activar plataformas sugeridas
+Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`, data => {
+    _setField('mu-nome',   data.nome);
+    _setField('mu-genero', data.genero || '');
+    _setField('mu-notas',  data.notas  || '');
+    if (data.tipo) _setField('mu-tipo', data.tipo);
     if (Array.isArray(data.plataformas)) {
       document.querySelectorAll('#mu-platforms .platform-toggle').forEach(el => {
-        const p = el.dataset.p;
+        const p      = el.dataset.p;
         const active = data.plataformas.includes(p);
         el.classList.toggle('active', active);
         const info = MUSIC_PLATFORMS[p];
         if (info) {
-          el.style.background   = active ? info.color + '22' : '';
-          el.style.borderColor  = active ? info.color : '';
-          el.style.color        = active ? info.color : '';
+          el.style.background  = active ? info.color + '22' : '';
+          el.style.borderColor = active ? info.color : '';
+          el.style.color       = active ? info.color : '';
         }
       });
     }
+    return `Artista "${data.nome}" gerado a partir do conceito!`;
+  }, { temperature: 0.8 });
+}
 
-    if (progress) progress.textContent = '';
-    _toggleConceptBar('musico', false);
-    app.toast(`Artista "${data.nome}" gerado a partir do conceito!`, 'success');
+/* ── Links e Perfis por Plataforma ── */
+async function openMusicoLinksModal(id, nome) {
+  const m = _musicosCache.find(x => String(x.id) === String(id));
+  const links = m?.links_sociais || {};
 
-  } catch (e) {
-    if (progress) progress.textContent = '';
-    app.toast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
+  const PLATFORM_URLS = {
+    spotify:       { label: 'Spotify',       icon: 'fa-brands fa-spotify',       placeholder: 'https://open.spotify.com/artist/…', color: '#1db954' },
+    apple_music:   { label: 'Apple Music',   icon: 'fa-brands fa-apple',         placeholder: 'https://music.apple.com/artist/…',  color: '#fc3c44' },
+    youtube_music: { label: 'YouTube Music', icon: 'fa-brands fa-youtube',       placeholder: 'https://music.youtube.com/channel/…', color: '#ef4444' },
+    soundcloud:    { label: 'SoundCloud',    icon: 'fa-brands fa-soundcloud',    placeholder: 'https://soundcloud.com/…',          color: '#ff5500' },
+    deezer:        { label: 'Deezer',        icon: 'fa-solid fa-music',          placeholder: 'https://www.deezer.com/artist/…',   color: '#a238ff' },
+    tidal:         { label: 'TIDAL',         icon: 'fa-solid fa-wave-square',    placeholder: 'https://tidal.com/browse/artist/…', color: '#00ffff' },
+    instagram:     { label: 'Instagram',     icon: 'fa-brands fa-instagram',     placeholder: 'https://instagram.com/…',           color: '#e1306c' },
+    tiktok:        { label: 'TikTok',        icon: 'fa-brands fa-tiktok',        placeholder: 'https://tiktok.com/@…',             color: '#ff0050' },
+    youtube:       { label: 'YouTube',       icon: 'fa-brands fa-youtube',       placeholder: 'https://youtube.com/@…',            color: '#ef4444' },
+  };
+
+  const body = `
+    <p class="text-muted text-sm mb-3">Adiciona os links dos perfis do artista nas plataformas de streaming e redes sociais.</p>
+    <div style="display:flex;flex-direction:column;gap:10px" id="musico-links-list">
+      ${Object.entries(PLATFORM_URLS).map(([p, info]) => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="${info.icon}" style="color:${info.color};width:20px;text-align:center;flex-shrink:0"></i>
+          <div style="font-size:.8rem;font-weight:600;width:100px;flex-shrink:0">${info.label}</div>
+          <input class="form-control" data-plat="${p}" value="${(links[p]||'').replace(/"/g,'&quot;')}" placeholder="${info.placeholder}" style="flex:1">
+        </div>`).join('')}
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveMusicoLinks('${id}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar links
+    </button>`;
+
+  app.openModal(`Links — ${nome}`, body, footer);
+}
+
+async function saveMusicoLinks(id) {
+  const links = {};
+  document.querySelectorAll('#musico-links-list [data-plat]').forEach(el => {
+    const v = el.value.trim();
+    if (v) links[el.dataset.plat] = v;
+  });
+
+  const m = _musicosCache.find(x => String(x.id) === String(id));
+  if (!m) { app.toast('Artista não encontrado', 'error'); return; }
+
+  if (DB.ready()) {
+    const { error } = await DB.upsertMusico({ id, links_sociais: links });
+    if (error) { app.toast('Erro ao guardar: ' + app.fmtErr(error), 'error'); return; }
   }
+
+  const idx = _musicosCache.findIndex(x => String(x.id) === String(id));
+  if (idx >= 0) _musicosCache[idx] = { ..._musicosCache[idx], links_sociais: links };
+
+  app.toast('Links guardados!', 'success');
+  app.closeModal();
 }
 
 function toggleMusicPlatform(el) {

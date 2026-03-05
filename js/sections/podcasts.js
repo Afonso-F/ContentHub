@@ -108,6 +108,9 @@ function _renderPodcastCard(p, isSelected) {
         <div class="flex gap-1 mt-1" style="font-size:1rem">${plats}</div>
       </div>
       <div class="flex gap-1" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-ghost" onclick="openPodcastLinksModal('${p.id}','${(p.nome||'').replace(/'/g,"\\'")}')">
+          <i class="fa-solid fa-link"></i>
+        </button>
         <button class="btn btn-sm btn-ghost" onclick="openPodcastModal('${p.id}')" title="Editar">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -302,7 +305,7 @@ function openPodcastModal(id) {
 
       <div class="form-group mb-0">
         <label class="form-label">Plataformas</label>
-        <div class="flex gap-1 flex-wrap">
+        <div class="flex gap-1 flex-wrap" id="pod-plats">
           ${PODCAST_PLATAFORMAS.map(pl => `
             <label style="cursor:pointer">
               <input type="checkbox" style="display:none" value="${pl}"
@@ -343,7 +346,7 @@ async function podSavePodcast(id) {
   if (!nome) { app.toast('O nome é obrigatório', 'warning'); return; }
 
   const cats  = [...document.querySelectorAll('#pod-cats input:checked')].map(el => el.value);
-  const plats = [...document.querySelectorAll('#modalBody input[type=checkbox]:not(#pod-cats input):checked')].map(el => el.value);
+  const plats = [...document.querySelectorAll('#pod-plats input[type=checkbox]:checked')].map(el => el.value);
 
   const btn = document.querySelector('#modalFooter .btn-primary');
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;display:inline-block"></div> A guardar…'; }
@@ -415,19 +418,70 @@ async function podDeletePodcast(id) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   LINKS E DISTRIBUIÇÃO
+══════════════════════════════════════════════════════════════ */
+const PODCAST_PLAT_LINKS = {
+  spotify:      { label: 'Spotify',        icon: 'fa-brands fa-spotify',      placeholder: 'https://open.spotify.com/show/…',   color: '#1db954' },
+  apple:        { label: 'Apple Podcasts', icon: 'fa-brands fa-apple',        placeholder: 'https://podcasts.apple.com/…',      color: '#fc3c44' },
+  youtube:      { label: 'YouTube',        icon: 'fa-brands fa-youtube',      placeholder: 'https://youtube.com/@…',            color: '#ef4444' },
+  amazon:       { label: 'Amazon Music',   icon: 'fa-brands fa-amazon',       placeholder: 'https://music.amazon.com/podcasts/…', color: '#ff9900' },
+  google:       { label: 'Google Podcasts',icon: 'fa-brands fa-google',       placeholder: 'https://podcasts.google.com/…',     color: '#4285f4' },
+  deezer:       { label: 'Deezer',         icon: 'fa-solid fa-music',         placeholder: 'https://www.deezer.com/show/…',     color: '#a238ff' },
+  pocket_casts: { label: 'Pocket Casts',   icon: 'fa-solid fa-headphones',    placeholder: 'https://pca.st/…',                  color: '#f43e37' },
+  overcast:     { label: 'Overcast',       icon: 'fa-solid fa-cloud',         placeholder: 'https://overcast.fm/…',             color: '#fc7e0f' },
+};
+
+function openPodcastLinksModal(id, nome) {
+  const p = _podState.podcasts.find(x => String(x.id) === String(id));
+  const links = p?.links_sociais || {};
+
+  const body = `
+    <p class="text-muted text-sm mb-3">Adiciona os links de distribuição do podcast em cada plataforma.</p>
+    <div style="display:flex;flex-direction:column;gap:10px" id="podcast-links-list">
+      ${Object.entries(PODCAST_PLAT_LINKS).map(([p, info]) => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="${info.icon}" style="color:${info.color};width:20px;text-align:center;flex-shrink:0"></i>
+          <div style="font-size:.8rem;font-weight:600;width:110px;flex-shrink:0">${info.label}</div>
+          <input class="form-control" data-plat="${p}" value="${(links[p]||'').replace(/"/g,'&quot;')}" placeholder="${info.placeholder}" style="flex:1">
+        </div>`).join('')}
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="savePodcastLinks('${id}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar links
+    </button>`;
+
+  app.openModal(`Links — ${nome}`, body, footer);
+}
+
+async function savePodcastLinks(id) {
+  const links = {};
+  document.querySelectorAll('#podcast-links-list [data-plat]').forEach(el => {
+    const v = el.value.trim();
+    if (v) links[el.dataset.plat] = v;
+  });
+
+  if (DB.ready()) {
+    const { error } = await DB.upsertPodcast({ id, links_sociais: links });
+    if (error) { app.toast('Erro ao guardar: ' + app.fmtErr(error), 'error'); return; }
+  }
+
+  const idx = _podState.podcasts.findIndex(x => String(x.id) === String(id));
+  if (idx >= 0) _podState.podcasts[idx] = { ..._podState.podcasts[idx], links_sociais: links };
+
+  app.toast('Links guardados!', 'success');
+  app.closeModal();
+}
+
+/* ══════════════════════════════════════════════════════════════
    CONCEITO COM IA
 ══════════════════════════════════════════════════════════════ */
 async function gerarPodcastDeConceito() {
   const conceito = document.getElementById('concept-text-podcast')?.value.trim();
   if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
 
-  const btn      = document.querySelector('#concept-panel-podcast .btn-primary');
-  const progress = document.getElementById('concept-progress-podcast');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
-  if (progress) progress.textContent = 'A interpretar conceito…';
-
-  try {
-    const prompt = `Cria um perfil completo de podcast baseado nesta descrição: "${conceito}"
+  await _runConceptGen('podcast', `Cria um perfil completo de podcast baseado nesta descrição: "${conceito}"
 
 Responde APENAS com JSON válido, sem markdown, sem backticks:
 {
@@ -437,17 +491,9 @@ Responde APENAS com JSON válido, sem markdown, sem backticks:
   "descricao": "Descrição apelativa do podcast em português, 2-3 frases que expliquem o tema, audiência e formato"
 }
 Categorias disponíveis: Tecnologia, Negócios, Entretenimento, Educação, Saúde, Desporto, Arte, Música, Notícias, Sociedade, Ciência, Humor.
-Plataformas: inclui apenas as mais relevantes (máximo 4).`;
-
-    const raw  = await AI.generateText(prompt, { temperature: 0.8 });
-    const m    = raw.match(/\{[\s\S]*\}/);
-    const data = JSON.parse(m ? m[0] : raw);
-
-    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
-    set('pod-nome',      data.nome);
-    set('pod-descricao', data.descricao || '');
-
-    // Activar categorias sugeridas
+Plataformas: inclui apenas as mais relevantes (máximo 4).`, data => {
+    _setField('pod-nome',      data.nome);
+    _setField('pod-descricao', data.descricao || '');
     if (Array.isArray(data.categorias)) {
       document.querySelectorAll('#pod-cats input[type=checkbox]').forEach(cb => {
         const active = data.categorias.includes(cb.value);
@@ -456,27 +502,16 @@ Plataformas: inclui apenas as mais relevantes (máximo 4).`;
         if (span) span.classList.toggle('active', active);
       });
     }
-
-    // Activar plataformas sugeridas
     if (Array.isArray(data.plataformas)) {
-      document.querySelectorAll('#modalBody input[type=checkbox]:not(#pod-cats input)').forEach(cb => {
+      document.querySelectorAll('#pod-plats input[type=checkbox]').forEach(cb => {
         const active = data.plataformas.includes(cb.value);
         cb.checked = active;
         const span = cb.nextElementSibling;
         if (span) span.classList.toggle('active', active);
       });
     }
-
-    if (progress) progress.textContent = '';
-    _toggleConceptBar('podcast', false);
-    app.toast(`Podcast "${data.nome}" gerado a partir do conceito!`, 'success');
-
-  } catch (e) {
-    if (progress) progress.textContent = '';
-    app.toast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
-  }
+    return `Podcast "${data.nome}" gerado a partir do conceito!`;
+  }, { temperature: 0.8 });
 }
 
 /* ══════════════════════════════════════════════════════════════
