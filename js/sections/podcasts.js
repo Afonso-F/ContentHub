@@ -108,6 +108,9 @@ function _renderPodcastCard(p, isSelected) {
         <div class="flex gap-1 mt-1" style="font-size:1rem">${plats}</div>
       </div>
       <div class="flex gap-1" onclick="event.stopPropagation()">
+        <button class="btn btn-sm btn-ghost" onclick="openPodcastLinksModal('${p.id}','${(p.nome||'').replace(/'/g,"\\'")}')">
+          <i class="fa-solid fa-link"></i>
+        </button>
         <button class="btn btn-sm btn-ghost" onclick="openPodcastModal('${p.id}')" title="Editar">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -412,6 +415,63 @@ async function podDeletePodcast(id) {
   }
   app.toast('Podcast eliminado', 'success');
   renderPodcasts(document.getElementById('content'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LINKS E DISTRIBUIÇÃO
+══════════════════════════════════════════════════════════════ */
+const PODCAST_PLAT_LINKS = {
+  spotify:      { label: 'Spotify',        icon: 'fa-brands fa-spotify',      placeholder: 'https://open.spotify.com/show/…',   color: '#1db954' },
+  apple:        { label: 'Apple Podcasts', icon: 'fa-brands fa-apple',        placeholder: 'https://podcasts.apple.com/…',      color: '#fc3c44' },
+  youtube:      { label: 'YouTube',        icon: 'fa-brands fa-youtube',      placeholder: 'https://youtube.com/@…',            color: '#ef4444' },
+  amazon:       { label: 'Amazon Music',   icon: 'fa-brands fa-amazon',       placeholder: 'https://music.amazon.com/podcasts/…', color: '#ff9900' },
+  google:       { label: 'Google Podcasts',icon: 'fa-brands fa-google',       placeholder: 'https://podcasts.google.com/…',     color: '#4285f4' },
+  deezer:       { label: 'Deezer',         icon: 'fa-solid fa-music',         placeholder: 'https://www.deezer.com/show/…',     color: '#a238ff' },
+  pocket_casts: { label: 'Pocket Casts',   icon: 'fa-solid fa-headphones',    placeholder: 'https://pca.st/…',                  color: '#f43e37' },
+  overcast:     { label: 'Overcast',       icon: 'fa-solid fa-cloud',         placeholder: 'https://overcast.fm/…',             color: '#fc7e0f' },
+};
+
+function openPodcastLinksModal(id, nome) {
+  const p = _podState.podcasts.find(x => String(x.id) === String(id));
+  const links = p?.links_sociais || {};
+
+  const body = `
+    <p class="text-muted text-sm mb-3">Adiciona os links de distribuição do podcast em cada plataforma.</p>
+    <div style="display:flex;flex-direction:column;gap:10px" id="podcast-links-list">
+      ${Object.entries(PODCAST_PLAT_LINKS).map(([p, info]) => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="${info.icon}" style="color:${info.color};width:20px;text-align:center;flex-shrink:0"></i>
+          <div style="font-size:.8rem;font-weight:600;width:110px;flex-shrink:0">${info.label}</div>
+          <input class="form-control" data-plat="${p}" value="${(links[p]||'').replace(/"/g,'&quot;')}" placeholder="${info.placeholder}" style="flex:1">
+        </div>`).join('')}
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="savePodcastLinks('${id}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar links
+    </button>`;
+
+  app.openModal(`Links — ${nome}`, body, footer);
+}
+
+async function savePodcastLinks(id) {
+  const links = {};
+  document.querySelectorAll('#podcast-links-list [data-plat]').forEach(el => {
+    const v = el.value.trim();
+    if (v) links[el.dataset.plat] = v;
+  });
+
+  if (DB.ready()) {
+    const { error } = await DB.upsertPodcast({ id, links_sociais: links });
+    if (error) { app.toast('Erro ao guardar: ' + app.fmtErr(error), 'error'); return; }
+  }
+
+  const idx = _podState.podcasts.findIndex(x => String(x.id) === String(id));
+  if (idx >= 0) _podState.podcasts[idx] = { ..._podState.podcasts[idx], links_sociais: links };
+
+  app.toast('Links guardados!', 'success');
+  app.closeModal();
 }
 
 /* ══════════════════════════════════════════════════════════════

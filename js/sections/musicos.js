@@ -114,6 +114,9 @@ function renderMusicoCard(m) {
         <button class="btn btn-sm btn-secondary flex-1" onclick="openMusicoStatsModal('${m.id}','${(m.nome||'').replace(/'/g,"\\'")}')">
           <i class="fa-solid fa-chart-line"></i> Stats
         </button>
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="openMusicoLinksModal('${m.id}','${(m.nome||'').replace(/'/g,"\\'")}')">
+          <i class="fa-solid fa-link"></i>
+        </button>
         <button class="btn btn-sm btn-secondary btn-icon" onclick="openMusicoModal('${m.id}')" title="Editar">
           <i class="fa-solid fa-pen"></i>
         </button>
@@ -263,6 +266,65 @@ Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`, dat
     }
     return `Artista "${data.nome}" gerado a partir do conceito!`;
   }, { temperature: 0.8 });
+}
+
+/* ── Links e Perfis por Plataforma ── */
+async function openMusicoLinksModal(id, nome) {
+  const m = _musicosCache.find(x => String(x.id) === String(id));
+  const links = m?.links_sociais || {};
+
+  const PLATFORM_URLS = {
+    spotify:       { label: 'Spotify',       icon: 'fa-brands fa-spotify',       placeholder: 'https://open.spotify.com/artist/…', color: '#1db954' },
+    apple_music:   { label: 'Apple Music',   icon: 'fa-brands fa-apple',         placeholder: 'https://music.apple.com/artist/…',  color: '#fc3c44' },
+    youtube_music: { label: 'YouTube Music', icon: 'fa-brands fa-youtube',       placeholder: 'https://music.youtube.com/channel/…', color: '#ef4444' },
+    soundcloud:    { label: 'SoundCloud',    icon: 'fa-brands fa-soundcloud',    placeholder: 'https://soundcloud.com/…',          color: '#ff5500' },
+    deezer:        { label: 'Deezer',        icon: 'fa-solid fa-music',          placeholder: 'https://www.deezer.com/artist/…',   color: '#a238ff' },
+    tidal:         { label: 'TIDAL',         icon: 'fa-solid fa-wave-square',    placeholder: 'https://tidal.com/browse/artist/…', color: '#00ffff' },
+    instagram:     { label: 'Instagram',     icon: 'fa-brands fa-instagram',     placeholder: 'https://instagram.com/…',           color: '#e1306c' },
+    tiktok:        { label: 'TikTok',        icon: 'fa-brands fa-tiktok',        placeholder: 'https://tiktok.com/@…',             color: '#ff0050' },
+    youtube:       { label: 'YouTube',       icon: 'fa-brands fa-youtube',       placeholder: 'https://youtube.com/@…',            color: '#ef4444' },
+  };
+
+  const body = `
+    <p class="text-muted text-sm mb-3">Adiciona os links dos perfis do artista nas plataformas de streaming e redes sociais.</p>
+    <div style="display:flex;flex-direction:column;gap:10px" id="musico-links-list">
+      ${Object.entries(PLATFORM_URLS).map(([p, info]) => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="${info.icon}" style="color:${info.color};width:20px;text-align:center;flex-shrink:0"></i>
+          <div style="font-size:.8rem;font-weight:600;width:100px;flex-shrink:0">${info.label}</div>
+          <input class="form-control" data-plat="${p}" value="${(links[p]||'').replace(/"/g,'&quot;')}" placeholder="${info.placeholder}" style="flex:1">
+        </div>`).join('')}
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveMusicoLinks('${id}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar links
+    </button>`;
+
+  app.openModal(`Links — ${nome}`, body, footer);
+}
+
+async function saveMusicoLinks(id) {
+  const links = {};
+  document.querySelectorAll('#musico-links-list [data-plat]').forEach(el => {
+    const v = el.value.trim();
+    if (v) links[el.dataset.plat] = v;
+  });
+
+  const m = _musicosCache.find(x => String(x.id) === String(id));
+  if (!m) { app.toast('Artista não encontrado', 'error'); return; }
+
+  if (DB.ready()) {
+    const { error } = await DB.upsertMusico({ id, links_sociais: links });
+    if (error) { app.toast('Erro ao guardar: ' + app.fmtErr(error), 'error'); return; }
+  }
+
+  const idx = _musicosCache.findIndex(x => String(x.id) === String(id));
+  if (idx >= 0) _musicosCache[idx] = { ..._musicosCache[idx], links_sociais: links };
+
+  app.toast('Links guardados!', 'success');
+  app.closeModal();
 }
 
 function toggleMusicPlatform(el) {

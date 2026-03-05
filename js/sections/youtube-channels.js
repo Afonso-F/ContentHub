@@ -147,7 +147,7 @@ function renderYoutubeCard(c) {
         </div>` : ''}
       </div>
 
-      ${c.canal_id ? `<div class="text-sm text-muted" style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-link" style="color:var(--accent)"></i> ID: ${c.canal_id}</div>` : ''}
+      ${c.username ? `<div class="text-sm text-muted" style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-at" style="color:var(--accent)"></i> ${c.username}</div>` : (c.canal_id ? `<div class="text-sm text-muted" style="display:flex;align-items:center;gap:5px"><i class="fa-solid fa-link" style="color:var(--accent)"></i> ID: ${c.canal_id}</div>` : '')}
 
       <div class="flex gap-1 mt-1">
         <button class="btn btn-sm btn-secondary flex-1" onclick="openYoutubeVideosModal('${c.id}','${(c.nome||'').replace(/'/g,"\\'")}','${plat}')">
@@ -238,10 +238,16 @@ async function openYoutubeModal(id, preAvatarId = '') {
         <input id="yt-nicho" class="form-control" value="${c?.nicho||''}" placeholder="Ex: Gaming, Tecnologia…">
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">ID / Handle do Canal</label>
-      <input id="yt-canal-id" class="form-control" value="${c?.canal_id||''}" placeholder="Ex: UCxxxxxx ou @meucanal">
-      <div class="form-hint" id="canal-id-hint">YouTube: encontra em youtube.com/channel/<strong>ID</strong></div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Username / Handle</label>
+        <input id="yt-username" class="form-control" value="${c?.username||''}" placeholder="Ex: @meucanal">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ID técnico do canal</label>
+        <input id="yt-canal-id" class="form-control" value="${c?.canal_id||''}" placeholder="Ex: UCxxxxxx">
+        <div class="form-hint" id="canal-id-hint">YouTube: encontra em youtube.com/channel/<strong>ID</strong></div>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">URL da imagem do canal</label>
@@ -520,6 +526,7 @@ async function saveYoutubeChannel(id) {
   const plataforma  = document.getElementById('vp-plataforma')?.value || 'youtube';
   const nome        = document.getElementById('yt-nome')?.value.trim();
   const nicho       = document.getElementById('yt-nicho')?.value.trim();
+  const username    = document.getElementById('yt-username')?.value.trim();
   const canal_id    = document.getElementById('yt-canal-id')?.value.trim();
   const imagem_url  = document.getElementById('yt-img')?.value.trim();
   const seguidores  = parseInt(document.getElementById('yt-subs')?.value)||0;
@@ -532,7 +539,7 @@ async function saveYoutubeChannel(id) {
 
   if (!nome) { app.toast('Nome é obrigatório', 'error'); return; }
 
-  const payload = { plataforma, nome, nicho, canal_id, imagem_url, seguidores, total_views, videos_count, receita_mes, adsense_rpm, notas, avatar_id };
+  const payload = { plataforma, nome, nicho, username, canal_id, imagem_url, seguidores, total_views, videos_count, receita_mes, adsense_rpm, notas, avatar_id };
   if (id) payload.id = id;
 
   if (DB.ready()) {
