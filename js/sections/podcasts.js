@@ -233,6 +233,24 @@ function openPodcastModal(id) {
   const body = `
     <div style="display:flex;flex-direction:column;gap:16px">
 
+      <!-- Concept panel IA -->
+      <div class="concept-toolbar" style="margin-bottom:0">
+        <button id="concept-toggle-btn-podcast" class="btn btn-sm btn-ghost" onclick="_toggleConceptBar('podcast')">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Descrever com IA
+        </button>
+      </div>
+      <div class="concept-panel" id="concept-panel-podcast">
+        <div class="concept-panel-label"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> Descreve o teu podcast — a IA preenche tudo</div>
+        <textarea id="concept-text-podcast" class="form-control" rows="3"
+          placeholder="Ex: podcast de entrevistas com empreendedores portugueses, foco em startups tech e inovação, episódios semanais de 45 min…"></textarea>
+        <div class="flex items-center gap-2 mt-2">
+          <button class="btn btn-sm btn-primary" onclick="gerarPodcastDeConceito()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA
+          </button>
+          <span id="concept-progress-podcast" class="text-sm" style="color:var(--accent)"></span>
+        </div>
+      </div>
+
       <!-- Capa -->
       <div style="display:flex;gap:16px;align-items:center">
         ${coverPreview}
@@ -394,6 +412,71 @@ async function podDeletePodcast(id) {
   }
   app.toast('Podcast eliminado', 'success');
   renderPodcasts(document.getElementById('content'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CONCEITO COM IA
+══════════════════════════════════════════════════════════════ */
+async function gerarPodcastDeConceito() {
+  const conceito = document.getElementById('concept-text-podcast')?.value.trim();
+  if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
+
+  const btn      = document.querySelector('#concept-panel-podcast .btn-primary');
+  const progress = document.getElementById('concept-progress-podcast');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
+  if (progress) progress.textContent = 'A interpretar conceito…';
+
+  try {
+    const prompt = `Cria um perfil completo de podcast baseado nesta descrição: "${conceito}"
+
+Responde APENAS com JSON válido, sem markdown, sem backticks:
+{
+  "nome": "Nome criativo e memorável para o podcast (2-5 palavras)",
+  "categorias": ["categoria1", "categoria2"],
+  "plataformas": ["spotify", "youtube", "apple", "amazon", "google", "deezer"],
+  "descricao": "Descrição apelativa do podcast em português, 2-3 frases que expliquem o tema, audiência e formato"
+}
+Categorias disponíveis: Tecnologia, Negócios, Entretenimento, Educação, Saúde, Desporto, Arte, Música, Notícias, Sociedade, Ciência, Humor.
+Plataformas: inclui apenas as mais relevantes (máximo 4).`;
+
+    const raw  = await AI.generateText(prompt, { temperature: 0.8 });
+    const m    = raw.match(/\{[\s\S]*\}/);
+    const data = JSON.parse(m ? m[0] : raw);
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+    set('pod-nome',      data.nome);
+    set('pod-descricao', data.descricao || '');
+
+    // Activar categorias sugeridas
+    if (Array.isArray(data.categorias)) {
+      document.querySelectorAll('#pod-cats input[type=checkbox]').forEach(cb => {
+        const active = data.categorias.includes(cb.value);
+        cb.checked = active;
+        const span = cb.nextElementSibling;
+        if (span) span.classList.toggle('active', active);
+      });
+    }
+
+    // Activar plataformas sugeridas
+    if (Array.isArray(data.plataformas)) {
+      document.querySelectorAll('#modalBody input[type=checkbox]:not(#pod-cats input)').forEach(cb => {
+        const active = data.plataformas.includes(cb.value);
+        cb.checked = active;
+        const span = cb.nextElementSibling;
+        if (span) span.classList.toggle('active', active);
+      });
+    }
+
+    if (progress) progress.textContent = '';
+    _toggleConceptBar('podcast', false);
+    app.toast(`Podcast "${data.nome}" gerado a partir do conceito!`, 'success');
+
+  } catch (e) {
+    if (progress) progress.textContent = '';
+    app.toast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════

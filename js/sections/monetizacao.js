@@ -804,9 +804,65 @@ async function saveTwitchStats(id) {
 
 let _afiliadosCache = [];
 
+async function gerarAfiliadoDeConceito() {
+  const conceito = document.getElementById('concept-text-afiliado')?.value.trim();
+  if (!conceito) { app.toast('Descreve primeiro o programa de afiliados', 'warning'); return; }
+
+  const btn      = document.querySelector('#concept-panel-afiliado .btn-primary');
+  const progress = document.getElementById('concept-progress-afiliado');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
+  if (progress) progress.textContent = 'A interpretar conceito…';
+
+  try {
+    const prompt = `Cria um perfil de programa de afiliados para criador de conteúdo baseado nesta descrição: "${conceito}"
+
+Responde APENAS com JSON válido, sem markdown, sem backticks:
+{
+  "nome": "Nome do programa de afiliados",
+  "plataforma": "Rede ou plataforma (ex: Amazon Associates, Impact, ShareASale, Hotmart…)",
+  "comissao_pct": 10
+}`;
+
+    const raw  = await AI.generateText(prompt, { temperature: 0.7, maxTokens: 200 });
+    const m    = raw.match(/\{[\s\S]*\}/);
+    const data = JSON.parse(m ? m[0] : raw);
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+    set('af-nome',       data.nome);
+    set('af-plataforma', data.plataforma || '');
+    if (data.comissao_pct) set('af-comissao', data.comissao_pct);
+
+    if (progress) progress.textContent = '';
+    document.getElementById('concept-panel-afiliado').classList.remove('open');
+    app.toast(`Programa "${data.nome}" gerado!`, 'success');
+
+  } catch (e) {
+    if (progress) progress.textContent = '';
+    app.toast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
+  }
+}
+
 async function openAfiliadoModal(id) {
   const existing = _afiliadosCache.find(a => String(a.id) === String(id)) || null;
   const body = `
+    <div class="concept-toolbar" style="margin-bottom:0">
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('concept-panel-afiliado').classList.toggle('open')">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Descrever com IA
+      </button>
+    </div>
+    <div class="concept-panel" id="concept-panel-afiliado">
+      <div class="concept-panel-label"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> Descreve o programa de afiliados — a IA preenche tudo</div>
+      <textarea id="concept-text-afiliado" class="form-control" rows="2"
+        placeholder="Ex: programa de afiliados da Amazon para reviews de produtos tech, comissão de 8%…"></textarea>
+      <div class="flex items-center gap-2 mt-2">
+        <button class="btn btn-sm btn-primary" onclick="gerarAfiliadoDeConceito()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA
+        </button>
+        <span id="concept-progress-afiliado" class="text-sm" style="color:var(--accent)"></span>
+      </div>
+    </div>
     <div class="grid-2">
       <div class="form-group">
         <label class="form-label">Nome do programa</label>

@@ -134,6 +134,22 @@ async function openMusicoModal(id) {
   const plats = m?.plataformas || [];
 
   const body = `
+    <div class="concept-toolbar">
+      <button id="concept-toggle-btn-musico" class="btn btn-sm btn-ghost" onclick="_toggleConceptBar('musico')">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Descrever com IA
+      </button>
+    </div>
+    <div class="concept-panel" id="concept-panel-musico">
+      <div class="concept-panel-label"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> Descreve o artista — a IA preenche tudo</div>
+      <textarea id="concept-text-musico" class="form-control" rows="3"
+        placeholder="Ex: banda de rock alternativo portuguesa dos anos 90, influências de Radiohead e Pixies, letras introspectivas…"></textarea>
+      <div class="flex items-center gap-2 mt-2">
+        <button class="btn btn-sm btn-primary" onclick="gerarMusicoDeConceito()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA
+        </button>
+        <span id="concept-progress-musico" class="text-sm" style="color:var(--accent)"></span>
+      </div>
+    </div>
     <div class="grid-2">
       <div class="form-group">
         <label class="form-label">Nome *</label>
@@ -210,6 +226,69 @@ async function openMusicoModal(id) {
     </button>`;
 
   app.openModal(isNew ? 'Novo artista' : `Editar — ${m.nome}`, body, footer);
+}
+
+async function gerarMusicoDeConceito() {
+  const conceito = document.getElementById('concept-text-musico')?.value.trim();
+  if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
+
+  const btn      = document.querySelector('#concept-panel-musico .btn-primary');
+  const progress = document.getElementById('concept-progress-musico');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
+  if (progress) progress.textContent = 'A interpretar conceito…';
+
+  try {
+    const prompt = `Cria um perfil completo de músico ou banda baseado nesta descrição: "${conceito}"
+
+Responde APENAS com JSON válido, sem markdown, sem backticks:
+{
+  "nome": "Nome artístico criativo e memorável",
+  "tipo": "musico ou banda",
+  "genero": "Género musical específico (ex: Rock Alternativo, Pop Indie, Hip-Hop…)",
+  "plataformas": ["spotify", "apple_music", "youtube_music", "soundcloud", "deezer", "tidal"],
+  "notas": "Biografia curta em português: origem, estilo, inspirações, conquistas — 2-3 frases"
+}
+Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`;
+
+    const raw  = await AI.generateText(prompt, { temperature: 0.8 });
+    const m    = raw.match(/\{[\s\S]*\}/);
+    const data = JSON.parse(m ? m[0] : raw);
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+    set('mu-nome',   data.nome);
+    set('mu-genero', data.genero || '');
+    set('mu-notas',  data.notas  || '');
+
+    if (data.tipo) {
+      const tipoEl = document.getElementById('mu-tipo');
+      if (tipoEl) tipoEl.value = data.tipo;
+    }
+
+    // Activar plataformas sugeridas
+    if (Array.isArray(data.plataformas)) {
+      document.querySelectorAll('#mu-platforms .platform-toggle').forEach(el => {
+        const p = el.dataset.p;
+        const active = data.plataformas.includes(p);
+        el.classList.toggle('active', active);
+        const info = MUSIC_PLATFORMS[p];
+        if (info) {
+          el.style.background   = active ? info.color + '22' : '';
+          el.style.borderColor  = active ? info.color : '';
+          el.style.color        = active ? info.color : '';
+        }
+      });
+    }
+
+    if (progress) progress.textContent = '';
+    _toggleConceptBar('musico', false);
+    app.toast(`Artista "${data.nome}" gerado a partir do conceito!`, 'success');
+
+  } catch (e) {
+    if (progress) progress.textContent = '';
+    app.toast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
+  }
 }
 
 function toggleMusicPlatform(el) {
