@@ -2,6 +2,8 @@
    sections/musicos.js — Gestão de músicos e bandas
    ============================================================ */
 
+let _musicosCache = [];
+
 const MUSIC_PLATFORMS = {
   spotify:      { label: 'Spotify',       icon: 'fa-brands fa-spotify',       color: '#1db954' },
   apple_music:  { label: 'Apple Music',   icon: 'fa-brands fa-apple',         color: '#fc3c44' },
@@ -12,11 +14,11 @@ const MUSIC_PLATFORMS = {
 };
 
 async function renderMusicos(container) {
-  let musicos = [];
   if (DB.ready()) {
     const { data } = await DB.getMusicos();
-    musicos = data || [];
+    _musicosCache = data || [];
   }
+  const musicos = _musicosCache;
 
   container.innerHTML = `
     <div class="section-header">
@@ -124,12 +126,11 @@ function renderMusicoCard(m) {
 
 /* ── Modal Criar/Editar ── */
 async function openMusicoModal(id) {
-  let musicos = [];
-  if (DB.ready()) {
+  if (!_musicosCache.length && DB.ready()) {
     const { data } = await DB.getMusicos();
-    musicos = data || [];
+    _musicosCache = data || [];
   }
-  const m = id ? musicos.find(x => String(x.id) === String(id)) : null;
+  const m = id ? _musicosCache.find(x => String(x.id) === String(id)) : null;
   const isNew = !m;
   const plats = m?.plataformas || [];
 
@@ -232,13 +233,7 @@ async function gerarMusicoDeConceito() {
   const conceito = document.getElementById('concept-text-musico')?.value.trim();
   if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
 
-  const btn      = document.querySelector('#concept-panel-musico .btn-primary');
-  const progress = document.getElementById('concept-progress-musico');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
-  if (progress) progress.textContent = 'A interpretar conceito…';
-
-  try {
-    const prompt = `Cria um perfil completo de músico ou banda baseado nesta descrição: "${conceito}"
+  await _runConceptGen('musico', `Cria um perfil completo de músico ou banda baseado nesta descrição: "${conceito}"
 
 Responde APENAS com JSON válido, sem markdown, sem backticks:
 {
@@ -248,47 +243,26 @@ Responde APENAS com JSON válido, sem markdown, sem backticks:
   "plataformas": ["spotify", "apple_music", "youtube_music", "soundcloud", "deezer", "tidal"],
   "notas": "Biografia curta em português: origem, estilo, inspirações, conquistas — 2-3 frases"
 }
-Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`;
-
-    const raw  = await AI.generateText(prompt, { temperature: 0.8 });
-    const m    = raw.match(/\{[\s\S]*\}/);
-    const data = JSON.parse(m ? m[0] : raw);
-
-    const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
-    set('mu-nome',   data.nome);
-    set('mu-genero', data.genero || '');
-    set('mu-notas',  data.notas  || '');
-
-    if (data.tipo) {
-      const tipoEl = document.getElementById('mu-tipo');
-      if (tipoEl) tipoEl.value = data.tipo;
-    }
-
-    // Activar plataformas sugeridas
+Inclui apenas as plataformas mais relevantes para o género (máximo 3-4).`, data => {
+    _setField('mu-nome',   data.nome);
+    _setField('mu-genero', data.genero || '');
+    _setField('mu-notas',  data.notas  || '');
+    if (data.tipo) _setField('mu-tipo', data.tipo);
     if (Array.isArray(data.plataformas)) {
       document.querySelectorAll('#mu-platforms .platform-toggle').forEach(el => {
-        const p = el.dataset.p;
+        const p      = el.dataset.p;
         const active = data.plataformas.includes(p);
         el.classList.toggle('active', active);
         const info = MUSIC_PLATFORMS[p];
         if (info) {
-          el.style.background   = active ? info.color + '22' : '';
-          el.style.borderColor  = active ? info.color : '';
-          el.style.color        = active ? info.color : '';
+          el.style.background  = active ? info.color + '22' : '';
+          el.style.borderColor = active ? info.color : '';
+          el.style.color       = active ? info.color : '';
         }
       });
     }
-
-    if (progress) progress.textContent = '';
-    _toggleConceptBar('musico', false);
-    app.toast(`Artista "${data.nome}" gerado a partir do conceito!`, 'success');
-
-  } catch (e) {
-    if (progress) progress.textContent = '';
-    app.toast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
-  }
+    return `Artista "${data.nome}" gerado a partir do conceito!`;
+  }, { temperature: 0.8 });
 }
 
 function toggleMusicPlatform(el) {

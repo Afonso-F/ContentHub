@@ -131,17 +131,39 @@ function _toggleConceptBar(type, force) {
   if (btn) btn.style.borderColor = open ? 'var(--accent)' : '';
 }
 
+// Setter seguro: aceita 0, '', false (ao contrário de `if (el && v)`)
+function _setField(id, v) {
+  const el = document.getElementById(id);
+  if (el && v !== undefined) el.value = v;
+}
+
+// Helper partilhado por todas as funções gerar*DeConceito
+async function _runConceptGen(type, promptStr, onData, aiOpts = {}) {
+  const btn      = document.querySelector(`#concept-panel-${type} .btn-primary`);
+  const progress = document.getElementById(`concept-progress-${type}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
+  if (progress) progress.textContent = 'A interpretar conceito…';
+  try {
+    const raw  = await AI.generateText(promptStr, aiOpts);
+    const m    = raw.match(/\{[\s\S]*\}/);
+    const data = JSON.parse(m ? m[0] : raw);
+    const msg  = onData(data);
+    if (progress) progress.textContent = '';
+    _toggleConceptBar(type, false);
+    if (msg) app.toast(msg, 'success');
+  } catch (e) {
+    if (progress) progress.textContent = '';
+    app.toast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
+  }
+}
+
 async function gerarAvatarDeConceito() {
   const conceito = document.getElementById('concept-text-avatar')?.value.trim();
   if (!conceito) { app.toast('Escreve primeiro o teu conceito', 'warning'); return; }
 
-  const btn = document.querySelector('#concept-panel-avatar .btn-primary');
-  const progress = document.getElementById('concept-progress-avatar');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;display:inline-block"></div> A gerar…'; }
-  if (progress) progress.textContent = 'A interpretar conceito com IA…';
-
-  try {
-    const prompt = `Cria um perfil completo de avatar criador de conteúdo baseado nesta descrição do utilizador: "${conceito}"
+  await _runConceptGen('avatar', `Cria um perfil completo de avatar criador de conteúdo baseado nesta descrição do utilizador: "${conceito}"
 
 Responde APENAS com JSON válido, sem markdown, sem backticks:
 {
@@ -152,22 +174,14 @@ Responde APENAS com JSON válido, sem markdown, sem backticks:
   "plataformas": ["2-4 de: instagram, tiktok, facebook, youtube, fansly, onlyfans, patreon, twitch, spotify"],
   "prompt_base": "Personalidade detalhada em português baseada na descrição — 3-4 frases sobre estilo, tom, conteúdo e forma de interagir com a audiência"
 }
-Interpreta e complementa criativamente o que faltar na descrição.`;
-
-    const raw  = await AI.generateText(prompt, { temperature: 0.85 });
-    const m    = raw.match(/\{[\s\S]*\}/);
-    const data = JSON.parse(m ? m[0] : raw);
-
-    const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
-    set('av-nome',   data.nome);
-    set('av-nicho',  data.nicho);
-    set('av-emoji',  data.emoji || '🎭');
-    set('av-prompt', data.prompt_base);
-
+Interpreta e complementa criativamente o que faltar na descrição.`, data => {
+    _setField('av-nome',   data.nome);
+    _setField('av-nicho',  data.nicho);
+    _setField('av-emoji',  data.emoji || '🎭');
+    _setField('av-prompt', data.prompt_base);
     if (data.categorias) {
       document.querySelectorAll('#av-cats .category-chip').forEach(chip => {
-        const on = data.categorias.some(c => c.toLowerCase() === chip.dataset.cat.toLowerCase());
-        chip.classList.toggle('active', on);
+        chip.classList.toggle('active', data.categorias.some(c => c.toLowerCase() === chip.dataset.cat.toLowerCase()));
       });
     }
     if (data.plataformas) {
@@ -177,17 +191,8 @@ Interpreta e complementa criativamente o que faltar na descrição.`;
         t.classList.toggle(t.dataset.p, on);
       });
     }
-
-    if (progress) progress.textContent = '';
-    _toggleConceptBar('avatar', false);
-    app.toast(`Avatar "${data.nome}" gerado a partir do conceito!`, 'success');
-
-  } catch (e) {
-    if (progress) progress.textContent = '';
-    app.toast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Gerar com IA'; }
-  }
+    return `Avatar "${data.nome}" gerado a partir do conceito!`;
+  }, { temperature: 0.85 });
 }
 
 /* ── Dashboard do Avatar ── */
