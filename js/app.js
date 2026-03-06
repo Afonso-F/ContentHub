@@ -4,22 +4,31 @@
 const app = (() => {
   // fn strings resolved at navigate-time so load order doesn't matter
   const sections = {
-    dashboard:      { title: 'Dashboard',        fn: 'renderDashboard' },
-    avatares:       { title: 'Avatares',          fn: 'renderAvatares' },
-    youtube:        { title: 'Canais de Vídeo',   fn: 'renderYoutube' },
-    musicos:        { title: 'Músicos & Bandas',  fn: 'renderMusicos' },
-    podcasts:       { title: 'Podcasts',          fn: 'renderPodcasts' },
-    criar:          { title: 'Criar Post',        fn: 'renderCriarPost' },
-    videos:         { title: 'Vídeos Curtos',     fn: 'renderVideosCurtos' },
-    fila:           { title: 'Fila / Agenda',     fn: 'renderFila' },
-    publicados:     { title: 'Publicados',        fn: 'renderPublicados' },
-    biblioteca:     { title: 'Biblioteca',        fn: 'renderBiblioteca' },
-    campanhas:      { title: 'Campanhas',         fn: 'renderCampanhas' },
-    analises:       { title: 'Análises',          fn: 'renderAnalises' },
-    monetizacao:    { title: 'Monetização',       fn: 'renderMonetizacao' },
-    despesas:       { title: 'Despesas',          fn: 'renderDespesas' },
-    pagamentos:     { title: 'Pagamentos',        fn: 'renderPagamentos' },
-    configuracoes:  { title: 'Configurações',     fn: 'renderConfiguracoes' },
+    // ── AI YouTube Factory ──────────────────────────────────
+    dashboard:          { title: 'Dashboard',          fn: 'renderDashboard' },
+    channels:           { title: 'Channels',           fn: 'renderChannels' },
+    'avatar-studio':    { title: 'Avatar Studio',      fn: 'renderAvatarStudio' },
+    pipeline:           { title: 'AI Video Generator', fn: 'renderPipeline' },
+    'podcast-gen':      { title: 'Podcast Generator',  fn: 'renderPodcastGenerator' },
+    'shorts-factory':   { title: 'Shorts Factory',     fn: 'renderShortsFactory' },
+    scheduler:          { title: 'Scheduler',          fn: 'renderScheduler' },
+    analytics:          { title: 'Analytics',          fn: 'renderAnalytics' },
+    // ── Legacy / existing ───────────────────────────────────
+    avatares:           { title: 'Avatares',           fn: 'renderAvatares' },
+    youtube:            { title: 'Canais de Vídeo',    fn: 'renderYoutube' },
+    musicos:            { title: 'Músicos & Bandas',   fn: 'renderMusicos' },
+    podcasts:           { title: 'Podcasts',           fn: 'renderPodcasts' },
+    criar:              { title: 'Criar Post',         fn: 'renderCriarPost' },
+    videos:             { title: 'Vídeos Curtos',      fn: 'renderVideosCurtos' },
+    fila:               { title: 'Upload Queue',       fn: 'renderFila' },
+    publicados:         { title: 'Publicados',         fn: 'renderPublicados' },
+    biblioteca:         { title: 'Biblioteca',         fn: 'renderBiblioteca' },
+    campanhas:          { title: 'Campanhas',          fn: 'renderCampanhas' },
+    analises:           { title: 'Análises',           fn: 'renderAnalises' },
+    monetizacao:        { title: 'Monetização',        fn: 'renderMonetizacao' },
+    despesas:           { title: 'Despesas',           fn: 'renderDespesas' },
+    pagamentos:         { title: 'Pagamentos',         fn: 'renderPagamentos' },
+    configuracoes:      { title: 'Configurações',      fn: 'renderConfiguracoes' },
   };
 
   let current = 'dashboard';
