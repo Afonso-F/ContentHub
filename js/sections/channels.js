@@ -42,6 +42,19 @@ const UPLOAD_FREQUENCIES = [
   { id: '1m',  label: '1 video/month' },
 ];
 
+const CHANNEL_SOCIAL_PLATFORMS = {
+  youtube:   { label: 'YouTube',    icon: 'fa-brands fa-youtube',    placeholder: 'https://youtube.com/@channel', color: '#ef4444' },
+  instagram: { label: 'Instagram',  icon: 'fa-brands fa-instagram',  placeholder: 'https://instagram.com/…',     color: '#e1306c' },
+  tiktok:    { label: 'TikTok',     icon: 'fa-brands fa-tiktok',     placeholder: 'https://tiktok.com/@…',       color: '#ff0050' },
+  twitter:   { label: 'X / Twitter',icon: 'fa-brands fa-x-twitter',  placeholder: 'https://x.com/…',             color: '#1da1f2' },
+  facebook:  { label: 'Facebook',   icon: 'fa-brands fa-facebook',   placeholder: 'https://facebook.com/…',      color: '#1877f2' },
+  linkedin:  { label: 'LinkedIn',   icon: 'fa-brands fa-linkedin',   placeholder: 'https://linkedin.com/in/…',   color: '#0a66c2' },
+  patreon:   { label: 'Patreon',    icon: 'fa-brands fa-patreon',    placeholder: 'https://patreon.com/…',       color: '#ff424d' },
+  twitch:    { label: 'Twitch',     icon: 'fa-brands fa-twitch',     placeholder: 'https://twitch.tv/…',         color: '#9146ff' },
+  discord:   { label: 'Discord',    icon: 'fa-brands fa-discord',    placeholder: 'https://discord.gg/…',        color: '#5865f2' },
+  website:   { label: 'Website',    icon: 'fa-solid fa-globe',       placeholder: 'https://yoursite.com',        color: 'var(--accent)' },
+};
+
 // In-memory channel store (backed by localStorage for persistence)
 const CHANNELS_KEY = 'yt_factory_channels';
 
@@ -198,10 +211,16 @@ function _renderChannelCard(ch) {
         </div>
       </div>
 
+      <!-- Social links row -->
+      ${_renderChannelSocialIcons(ch)}
+
       <!-- Actions -->
       <div style="display:flex;gap:6px">
         <button class="btn btn-sm btn-primary flex-1" onclick="openChannelPipeline('${ch.id}')">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Generate
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="openChannelLinksModal('${ch.id}')" title="Social Links">
+          <i class="fa-solid fa-share-nodes"></i>
         </button>
         <button class="btn btn-sm btn-secondary" onclick="openChannelModal('${ch.id}')" title="Edit">
           <i class="fa-solid fa-pen"></i>
@@ -223,6 +242,26 @@ function _langLabel(code) {
 
 function escCh(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _renderChannelSocialIcons(ch) {
+  const links = ch.social_links || {};
+  const active = Object.entries(CHANNEL_SOCIAL_PLATFORMS).filter(([k]) => links[k]);
+  if (!active.length) return `
+    <div style="margin-bottom:10px">
+      <button class="btn btn-sm btn-secondary" style="width:100%;font-size:.75rem;color:var(--text-muted)" onclick="openChannelLinksModal('${ch.id}')">
+        <i class="fa-solid fa-share-nodes"></i> Add social links
+      </button>
+    </div>`;
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${active.map(([k, info]) => `
+        <a href="${escCh(links[k])}" target="_blank" rel="noopener"
+           title="${info.label}"
+           style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${info.color}22;color:${info.color};font-size:.8rem;text-decoration:none;border:1px solid ${info.color}44">
+          <i class="${info.icon}"></i>
+        </a>`).join('')}
+    </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -297,8 +336,14 @@ function openChannelModal(id) {
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">YouTube Channel URL</label>
-        <input id="ch-url" class="form-control" type="url" placeholder="https://youtube.com/@channel" value="${escCh(ch?.url || '')}">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px">
+          <i class="fa-solid fa-share-nodes" style="color:var(--accent)"></i>
+          Social Links
+          <span style="font-size:.75rem;color:var(--text-muted);font-weight:400">— editáveis após guardar</span>
+        </label>
+        <div style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.8rem;color:var(--text-muted)">
+          Usa o botão <i class="fa-solid fa-share-nodes"></i> no card do canal para adicionar links de Instagram, TikTok, X, Facebook e outras plataformas.
+        </div>
       </div>
     </div>`;
 
@@ -321,7 +366,6 @@ function saveChannel(id) {
   const mon    = document.querySelector('input[name="ch-mon"]:checked')?.value || 'adsense';
   const views  = parseInt(document.getElementById('ch-views')?.value) || 0;
   const rev    = parseFloat(document.getElementById('ch-revenue')?.value) || 0;
-  const url    = document.getElementById('ch-url')?.value?.trim();
 
   if (!name) { app.toast('Channel name is required', 'error'); return; }
 
@@ -332,11 +376,11 @@ function saveChannel(id) {
   if (id) {
     const idx = channels.findIndex(c => c.id === id);
     if (idx >= 0) {
-      channels[idx] = { ...channels[idx], name, niche, language: lang, avatar_host: avatar, avatar_host_name: avatarObj?.nome || avatarObj?.name || '', upload_frequency: freq, shorts_per_day: shorts, monetization_type: mon, total_views: views, monthly_revenue: rev, url, updated_at: new Date().toISOString() };
+      channels[idx] = { ...channels[idx], name, niche, language: lang, avatar_host: avatar, avatar_host_name: avatarObj?.nome || avatarObj?.name || '', upload_frequency: freq, shorts_per_day: shorts, monetization_type: mon, total_views: views, monthly_revenue: rev, updated_at: new Date().toISOString() };
     }
   } else {
     if (channels.length >= 50) { app.toast('Factory limit: 50 channels maximum', 'error'); return; }
-    channels.push({ id: _genId(), name, niche, language: lang, avatar_host: avatar, avatar_host_name: avatarObj?.nome || avatarObj?.name || '', upload_frequency: freq, shorts_per_day: shorts, monetization_type: mon, total_views: views, monthly_revenue: rev, url, status: 'setup', videos_generated: 0, created_at: new Date().toISOString() });
+    channels.push({ id: _genId(), name, niche, language: lang, avatar_host: avatar, avatar_host_name: avatarObj?.nome || avatarObj?.name || '', upload_frequency: freq, shorts_per_day: shorts, monetization_type: mon, total_views: views, monthly_revenue: rev, social_links: {}, status: 'setup', videos_generated: 0, created_at: new Date().toISOString() });
   }
 
   _saveChannels(channels);
@@ -376,6 +420,55 @@ function confirmDeleteChannel(id) {
   _saveChannels(channels);
   app.closeModal();
   app.toast('Channel deleted', 'info');
+  const content = document.getElementById('content');
+  if (content) renderChannels(content);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL — Social Links
+══════════════════════════════════════════════════════════════ */
+function openChannelLinksModal(id) {
+  const channels = _loadChannels();
+  const ch = channels.find(c => c.id === id);
+  if (!ch) return;
+  const links = ch.social_links || {};
+
+  const body = `
+    <p class="text-muted text-sm mb-3">Adiciona os links do canal nas redes sociais e plataformas.</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${Object.entries(CHANNEL_SOCIAL_PLATFORMS).map(([k, info]) => `
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="${info.icon}" style="color:${info.color};width:20px;text-align:center;flex-shrink:0"></i>
+          <div style="font-size:.8rem;font-weight:600;width:110px;flex-shrink:0">${info.label}</div>
+          <input class="form-control" data-plat="${k}" value="${escCh(links[k] || '')}" placeholder="${info.placeholder}" style="flex:1">
+        </div>`).join('')}
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveChannelLinks('${id}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar links
+    </button>`;
+
+  app.openModal(`Links — ${escCh(ch.name)}`, body, footer);
+}
+
+function saveChannelLinks(id) {
+  const inputs = document.querySelectorAll('[data-plat]');
+  const social_links = {};
+  inputs.forEach(inp => {
+    const v = inp.value.trim();
+    if (v) social_links[inp.dataset.plat] = v;
+  });
+
+  const channels = _loadChannels();
+  const idx = channels.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  channels[idx].social_links = social_links;
+  channels[idx].updated_at = new Date().toISOString();
+  _saveChannels(channels);
+  app.closeModal();
+  app.toast('Links guardados!', 'success');
   const content = document.getElementById('content');
   if (content) renderChannels(content);
 }
