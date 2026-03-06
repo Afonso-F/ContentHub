@@ -12,6 +12,7 @@ const app = (() => {
     'podcast-gen':      { title: 'Podcast Generator',  fn: 'renderPodcastGenerator' },
     'shorts-factory':   { title: 'Shorts Factory',     fn: 'renderShortsFactory' },
     scheduler:          { title: 'Scheduler',          fn: 'renderScheduler' },
+    'factory-setup':    { title: 'AI Factory Setup',   fn: 'renderFactorySetup' },
     analytics:          { title: 'Analytics',          fn: 'renderAnalytics' },
     // ── Legacy / existing ───────────────────────────────────
     avatares:           { title: 'Avatares',           fn: 'renderAvatares' },

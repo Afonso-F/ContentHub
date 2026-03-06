@@ -184,8 +184,6 @@ async function loadAnalytics() {
   if (DB.ready()) {
     const res = await DB.getAnalytics(avatarId || undefined);
     data = res.data || [];
-  } else {
-    data = getDemoData();
   }
 
   updateKPIs(data);
@@ -196,24 +194,6 @@ async function loadAnalytics() {
   renderTopPosts(data);
 }
 
-function getDemoData() {
-  const platforms = ['instagram','instagram','tiktok','tiktok','facebook','youtube'];
-  const avatarIds = ['luna','aria','zara','nova'];
-  const now = new Date();
-  return Array.from({ length: 60 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    return {
-      plataforma:   platforms[i % platforms.length],
-      avatar_id:    avatarIds[i % avatarIds.length],
-      likes:        Math.floor(Math.random() * 3000 + 200),
-      comentarios:  Math.floor(Math.random() * 200 + 10),
-      partilhas:    Math.floor(Math.random() * 100),
-      visualizacoes:Math.floor(Math.random() * 20000 + 1000),
-      publicado_em: d.toISOString(),
-    };
-  });
-}
 
 function updateKPIs(data) {
   const totalLikes = data.reduce((s, d) => s + (d.likes  || 0), 0);
