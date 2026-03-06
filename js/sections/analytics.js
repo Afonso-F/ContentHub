@@ -68,8 +68,8 @@ async function renderAnalytics(container) {
           <option value="90">Last 90 days</option>
           <option value="365">Last year</option>
         </select>
-        <button class="btn btn-secondary" onclick="exportAnalytics()">
-          <i class="fa-solid fa-download"></i> Export
+        <button class="btn btn-secondary" onclick="exportAnalyticsReport()">
+          <i class="fa-solid fa-file-arrow-down"></i> Relatório completo
         </button>
       </div>
     </div>
@@ -390,6 +390,169 @@ function exportAnalytics() {
   const a    = document.createElement('a');
   a.href = url; a.download = 'analytics-export.csv'; a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ── Relatório completo desde o início de actividade ── */
+async function exportAnalyticsReport() {
+  const btn = document.querySelector('[onclick="exportAnalyticsReport()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;display:inline-block"></div> A gerar…'; }
+
+  try {
+    // Recolher todos os dados disponíveis
+    let posts = [], publicados = [], avatares = [], dbChannels = [], podcasts = [], episodios = [];
+    if (typeof DB !== 'undefined' && DB.ready()) {
+      const [pr, pubr, avr, ytr, podr] = await Promise.all([
+        DB.getPosts({ limit: 2000 }),
+        DB.getPublicados({ limit: 2000 }),
+        DB.getAvatares(),
+        DB.getYoutubeChannels(),
+        DB.getPodcasts ? DB.getPodcasts() : { data: [] },
+      ]);
+      posts      = pr.data    || [];
+      publicados = pubr.data  || [];
+      avatares   = avr.data   || [];
+      dbChannels = ytr.data   || [];
+      podcasts   = podr.data  || [];
+    }
+
+    const factoryChannels = typeof _loadChannels === 'function' ? _loadChannels() : [];
+    const allChannels = [...dbChannels, ...factoryChannels];
+
+    const now     = new Date();
+    const dateFmt = d => d ? new Date(d).toLocaleString('pt-PT') : '';
+    const esc     = s => `"${String(s || '').replace(/"/g, '""')}"`;
+    const sep     = '\n\n';
+
+    /* ─── Secção 1: Resumo global ─── */
+    const totalPosts     = posts.length;
+    const agendados      = posts.filter(p => p.status === 'agendado').length;
+    const publicadosPosts= posts.filter(p => p.status === 'publicado').length;
+    const rascunhos      = posts.filter(p => p.status === 'rascunho').length;
+    const totalViews     = publicados.reduce((s, p) => s + (p.visualizacoes || 0), 0);
+    const totalLikes     = publicados.reduce((s, p) => s + (p.likes || 0), 0);
+    const totalComm      = publicados.reduce((s, p) => s + (p.comentarios || 0), 0);
+    const totalRevenue   = allChannels.reduce((s, c) => s + (parseFloat(c.receita_mes || c.monthly_revenue) || 0), 0);
+
+    // Data de início de actividade
+    const allDates = [...posts.map(p => p.criado_em), ...publicados.map(p => p.publicado_em)].filter(Boolean).sort();
+    const dataInicio = allDates[0] ? new Date(allDates[0]).toLocaleDateString('pt-PT') : 'N/D';
+
+    let csv = `RELATÓRIO DE ANALYTICS — CONTENTHUB\n`;
+    csv += `Gerado em,${now.toLocaleString('pt-PT')}\n`;
+    csv += `Início de actividade,${dataInicio}\n`;
+    csv += sep;
+
+    csv += `RESUMO GLOBAL\n`;
+    csv += `Métrica,Valor\n`;
+    csv += `Total de posts criados,${totalPosts}\n`;
+    csv += `Posts agendados,${agendados}\n`;
+    csv += `Posts publicados,${publicadosPosts}\n`;
+    csv += `Rascunhos,${rascunhos}\n`;
+    csv += `Total de publicações nas redes,${publicados.length}\n`;
+    csv += `Total de visualizações,${totalViews}\n`;
+    csv += `Total de likes,${totalLikes}\n`;
+    csv += `Total de comentários,${totalComm}\n`;
+    csv += `Engagement médio por publicação,${publicados.length ? ((totalLikes + totalComm) / publicados.length).toFixed(1) : 0}\n`;
+    csv += `Canais activos,${allChannels.length}\n`;
+    csv += `Avatares,${avatares.length}\n`;
+    csv += `Podcasts,${podcasts.length}\n`;
+    csv += `Receita estimada/mês,€${totalRevenue.toFixed(2)}\n`;
+    csv += sep;
+
+    /* ─── Secção 2: Performance por plataforma ─── */
+    const platStats = {};
+    publicados.forEach(p => {
+      if (!platStats[p.plataforma]) platStats[p.plataforma] = { publicacoes: 0, views: 0, likes: 0, comentarios: 0 };
+      platStats[p.plataforma].publicacoes++;
+      platStats[p.plataforma].views     += p.visualizacoes || 0;
+      platStats[p.plataforma].likes     += p.likes || 0;
+      platStats[p.plataforma].comentarios += p.comentarios || 0;
+    });
+    csv += `PERFORMANCE POR PLATAFORMA\n`;
+    csv += `Plataforma,Publicações,Visualizações,Likes,Comentários,Engagement médio\n`;
+    Object.entries(platStats).sort((a,b) => b[1].views - a[1].views).forEach(([pl, s]) => {
+      const eng = s.publicacoes ? ((s.likes + s.comentarios) / s.publicacoes).toFixed(1) : 0;
+      csv += `${pl},${s.publicacoes},${s.views},${s.likes},${s.comentarios},${eng}\n`;
+    });
+    csv += sep;
+
+    /* ─── Secção 3: Actividade mensal ─── */
+    const monthly = {};
+    publicados.forEach(p => {
+      const month = p.publicado_em ? new Date(p.publicado_em).toISOString().slice(0,7) : 'N/D';
+      if (!monthly[month]) monthly[month] = { publicacoes: 0, views: 0, likes: 0 };
+      monthly[month].publicacoes++;
+      monthly[month].views += p.visualizacoes || 0;
+      monthly[month].likes += p.likes || 0;
+    });
+    csv += `ACTIVIDADE MENSAL\n`;
+    csv += `Mês,Publicações,Visualizações,Likes\n`;
+    Object.entries(monthly).sort((a,b) => a[0].localeCompare(b[0])).forEach(([month, s]) => {
+      csv += `${month},${s.publicacoes},${s.views},${s.likes}\n`;
+    });
+    csv += sep;
+
+    /* ─── Secção 4: Performance por avatar ─── */
+    const avatarStats = {};
+    publicados.forEach(p => {
+      const aid = p.avatar_id || '__none__';
+      if (!avatarStats[aid]) avatarStats[aid] = { publicacoes: 0, views: 0, likes: 0 };
+      avatarStats[aid].publicacoes++;
+      avatarStats[aid].views += p.visualizacoes || 0;
+      avatarStats[aid].likes += p.likes || 0;
+    });
+    csv += `PERFORMANCE POR AVATAR\n`;
+    csv += `Avatar,Publicações,Visualizações,Likes\n`;
+    Object.entries(avatarStats).sort((a,b) => b[1].views - a[1].views).forEach(([aid, s]) => {
+      const av = avatares.find(a => String(a.id) === String(aid));
+      const nome = av ? av.nome : '(sem avatar)';
+      csv += `${esc(nome)},${s.publicacoes},${s.views},${s.likes}\n`;
+    });
+    csv += sep;
+
+    /* ─── Secção 5: Todos os posts publicados ─── */
+    csv += `HISTÓRICO DE PUBLICAÇÕES\n`;
+    csv += `Data,Avatar,Plataforma,Visualizações,Likes,Comentários,URL\n`;
+    [...publicados].sort((a,b) => new Date(a.publicado_em||0) - new Date(b.publicado_em||0)).forEach(p => {
+      const av = avatares.find(a => String(a.id) === String(p.avatar_id));
+      csv += `${esc(dateFmt(p.publicado_em))},${esc(av?.nome||'')},${p.plataforma||''},${p.visualizacoes||0},${p.likes||0},${p.comentarios||0},${esc(p.url_post||p.post_id_social||'')}\n`;
+    });
+    csv += sep;
+
+    /* ─── Secção 6: Canais ─── */
+    if (allChannels.length) {
+      csv += `CANAIS\n`;
+      csv += `Nome,Nicho,Visualizações,Subscritores,Receita/mês,Vídeos,Status\n`;
+      allChannels.forEach(c => {
+        csv += `${esc(c.nome||c.name)},${esc(c.nicho||c.niche)},${c.total_views||c.visualizacoes||0},${c.seguidores||c.subscribers||0},€${parseFloat(c.receita_mes||c.monthly_revenue||0).toFixed(2)},${c.videos_count||c.videos_generated||0},${c.status||''}\n`;
+      });
+      csv += sep;
+    }
+
+    /* ─── Secção 7: Podcasts ─── */
+    if (podcasts.length) {
+      csv += `PODCASTS\n`;
+      csv += `Nome,Categorias,Plataformas,RSS URL\n`;
+      podcasts.forEach(p => {
+        csv += `${esc(p.nome)},${esc((p.categorias||[]).join(', '))},${esc((p.plataformas||[]).join(', '))},${esc(p.rss_url||'')}\n`;
+      });
+      csv += sep;
+    }
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `contenthub-relatorio-${now.toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    app.toast('Relatório exportado com sucesso!', 'success');
+  } catch(e) {
+    console.error(e);
+    app.toast('Erro ao gerar relatório: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-file-arrow-down"></i> Relatório completo'; }
+  }
 }
 
 function escAn(s) {

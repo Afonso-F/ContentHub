@@ -62,12 +62,126 @@ async function renderFila(container) {
       </select>
     </div>
 
+    ${_renderFilaAgendamentoOverview(posts, avatares)}
+
     <div id="fila-list"></div>
     <div id="fila-pagination"></div>`;
 
   renderFilaList();
   initBrowserNotifications();
 }
+
+/* ── Painel de visão geral de agendamento por outlet ── */
+function _renderFilaAgendamentoOverview(posts, avatares) {
+  const now = new Date();
+  const agendados = posts.filter(p => p.status === 'agendado' && p.agendado_para && new Date(p.agendado_para) > now);
+
+  if (!agendados.length) {
+    return `<div class="card mb-3" style="padding:14px 16px;border-left:3px solid var(--yellow)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--yellow);font-size:1.2rem"></i>
+        <div>
+          <div style="font-weight:600">Sem posts agendados para o futuro</div>
+          <div class="text-muted text-sm">Cria novos posts para manter os teus canais activos.</div>
+        </div>
+        <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="app.navigate('criar')">
+          <i class="fa-solid fa-plus"></i> Criar post
+        </button>
+      </div>
+    </div>`;
+  }
+
+  // Por plataforma
+  const byPlatform = {};
+  agendados.forEach(p => {
+    (p.plataformas || []).forEach(pl => {
+      if (!byPlatform[pl]) byPlatform[pl] = { count: 0, next: null };
+      byPlatform[pl].count++;
+      const t = new Date(p.agendado_para);
+      if (!byPlatform[pl].next || t < byPlatform[pl].next) byPlatform[pl].next = t;
+    });
+  });
+
+  // Por avatar
+  const byAvatar = {};
+  agendados.forEach(p => {
+    const aid = p.avatar_id || '__none__';
+    if (!byAvatar[aid]) byAvatar[aid] = { count: 0, next: null };
+    byAvatar[aid].count++;
+    const t = new Date(p.agendado_para);
+    if (!byAvatar[aid].next || t < byAvatar[aid].next) byAvatar[aid].next = t;
+  });
+
+  const LOW_THRESHOLD = 3;
+
+  const platformHtml = Object.entries(byPlatform)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([pl, s]) => {
+      const isLow = s.count < LOW_THRESHOLD;
+      const nextStr = s.next ? app.formatDate(s.next) : '—';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid ${isLow ? 'var(--yellow)' : 'var(--green)'}">
+        <span style="font-size:1rem">${app.platformIcon(pl)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600">${app.platformLabel(pl)}</div>
+          <div style="font-size:.7rem;color:var(--text-muted)">Próximo: ${nextStr}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1rem;font-weight:700;color:${isLow ? 'var(--yellow)' : 'var(--green)'}">${s.count}</div>
+          ${isLow ? '<div style="font-size:.65rem;color:var(--yellow)">⚠ poucos</div>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+  const avatarHtml = Object.entries(byAvatar)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([aid, s]) => {
+      const av = avatares.find(a => String(a.id) === String(aid));
+      if (!av && aid !== '__none__') return '';
+      const nome = av ? `${av.emoji || '🎭'} ${av.nome}` : '(sem avatar)';
+      const isLow = s.count < LOW_THRESHOLD;
+      const nextStr = s.next ? app.formatDate(s.next) : '—';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid ${isLow ? 'var(--yellow)' : 'var(--accent)'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
+          <div style="font-size:.7rem;color:var(--text-muted)">Próximo: ${nextStr}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1rem;font-weight:700;color:${isLow ? 'var(--yellow)' : 'var(--accent)'}">${s.count}</div>
+          ${isLow ? '<div style="font-size:.65rem;color:var(--yellow)">⚠ poucos</div>' : ''}
+        </div>
+      </div>`;
+    }).filter(Boolean).join('');
+
+  const hasLowPlatform = Object.values(byPlatform).some(s => s.count < LOW_THRESHOLD);
+  const hasLowAvatar   = Object.values(byAvatar).some(s => s.count < LOW_THRESHOLD);
+
+  return `
+    <div class="card mb-3" style="padding:14px 16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <i class="fa-solid fa-calendar-check" style="color:var(--accent);font-size:1.1rem"></i>
+        <div style="flex:1">
+          <span style="font-weight:700">${agendados.length} posts agendados para o futuro</span>
+          ${hasLowPlatform || hasLowAvatar ? `<span style="margin-left:10px;font-size:.78rem;color:var(--yellow)"><i class="fa-solid fa-triangle-exclamation"></i> Alguns outlets têm poucos posts — considera criar mais</span>` : ''}
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="app.navigate('criar')">
+          <i class="fa-solid fa-plus"></i> Criar post
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Por plataforma</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${platformHtml || '<div class="text-muted text-sm">Nenhuma plataforma configurada</div>'}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Por avatar</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${avatarHtml || '<div class="text-muted text-sm">Sem posts por avatar</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
 
 /* ── Vista: lista ↔ kanban ── */
 function toggleFilaView() {

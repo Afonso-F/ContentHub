@@ -108,6 +108,10 @@ function _renderPodcastCard(p, isSelected) {
         <div class="flex gap-1 mt-1" style="font-size:1rem">${plats}</div>
       </div>
       <div class="flex gap-1" onclick="event.stopPropagation()">
+        ${p.rss_url ? `
+          <button class="btn btn-sm btn-ghost" style="color:var(--accent)" onclick="openRssImportModal('${p.id}')" title="Importar episódios do RSS">
+            <i class="fa-solid fa-rss"></i>
+          </button>` : ''}
         <button class="btn btn-sm btn-ghost" onclick="openPodcastLinksModal('${p.id}','${(p.nome||'').replace(/'/g,"\\'")}')">
           <i class="fa-solid fa-link"></i>
         </button>
@@ -127,14 +131,20 @@ function _renderEpisodesPanel() {
 
   return `
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div>
           <div class="card-title" style="margin:0">${escPod(p.nome)}</div>
-          <div class="text-muted" style="font-size:0.8rem">${eps.length} episódio(s)</div>
+          <div class="text-muted" style="font-size:0.8rem">${eps.length} episódio(s)${p.rss_url ? ' · <i class="fa-solid fa-rss" style="color:var(--accent)"></i> RSS activo' : ''}</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openEpisodioModal(null,'${p.id}')">
-          <i class="fa-solid fa-plus"></i> Novo episódio
-        </button>
+        <div class="flex gap-1">
+          ${p.rss_url ? `
+            <button class="btn btn-sm btn-secondary" onclick="openRssImportModal('${p.id}')" title="Importar do RSS">
+              <i class="fa-solid fa-rss"></i> Importar RSS
+            </button>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="openEpisodioModal(null,'${p.id}')">
+            <i class="fa-solid fa-plus"></i> Novo episódio
+          </button>
+        </div>
       </div>
 
       ${eps.length === 0 ? `
@@ -1068,4 +1078,269 @@ function _podPlatIcon(pl) {
     overcast:     '<i class="fa-solid fa-headphones" style="color:#fc7e0f"></i>',
   };
   return icons[pl] || '<i class="fa-solid fa-broadcast-tower"></i>';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RSS FEED — Importação e publicação automática
+══════════════════════════════════════════════════════════════ */
+
+/* Abre o modal de importação RSS para um podcast */
+function openRssImportModal(podcastId) {
+  const p = _podState.podcasts.find(x => String(x.id) === String(podcastId));
+  if (!p) return;
+
+  const body = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="form-group mb-0">
+        <label class="form-label">URL do Feed RSS</label>
+        <div class="flex gap-1">
+          <input id="rss-url-input" class="form-control" type="url" placeholder="https://…/feed.xml"
+            value="${escPod(p.rss_url || '')}" style="flex:1">
+          <button class="btn btn-secondary" onclick="podFetchRss('${podcastId}')">
+            <i class="fa-solid fa-rotate"></i> Carregar
+          </button>
+        </div>
+        <div class="form-hint">O feed RSS será lido e os episódios importados automaticamente</div>
+      </div>
+
+      <div id="rss-preview" style="display:none">
+        <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+          Episódios encontrados no feed
+        </div>
+        <div id="rss-items" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto"></div>
+      </div>
+
+      <div id="rss-status" style="display:none"></div>
+
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem">
+          <input type="checkbox" id="rss-auto-publish" ${p.rss_auto_publicar ? 'checked' : ''}>
+          <span>Publicar automaticamente novos episódios do feed</span>
+        </label>
+        <div class="form-hint">Quando activo, novos episódios detectados no RSS são adicionados à fila com áudio e vídeo</div>
+      </div>
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="app.closeModal()">Fechar</button>
+    <button class="btn btn-secondary" onclick="podSaveRssSettings('${podcastId}')">
+      <i class="fa-solid fa-floppy-disk"></i> Guardar definições
+    </button>
+    <button class="btn btn-primary" id="rss-import-btn" onclick="podImportRssEpisodes('${podcastId}')" disabled>
+      <i class="fa-solid fa-file-import"></i> Importar seleccionados
+    </button>`;
+
+  app.openModal(`RSS Feed — ${escPod(p.nome)}`, body, footer);
+  window._rssItems = [];
+
+  // Auto-carregar se já tiver URL
+  if (p.rss_url) {
+    setTimeout(() => podFetchRss(podcastId), 200);
+  }
+}
+
+/* Faz fetch do feed RSS e mostra a lista de episódios */
+async function podFetchRss(podcastId) {
+  const urlInput = document.getElementById('rss-url-input');
+  const rssUrl = urlInput?.value.trim();
+  if (!rssUrl) { app.toast('Introduz um URL de RSS válido', 'warning'); return; }
+
+  const statusEl = document.getElementById('rss-status');
+  const previewEl = document.getElementById('rss-preview');
+  const itemsEl  = document.getElementById('rss-items');
+  const importBtn = document.getElementById('rss-import-btn');
+
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted)"><div class="spinner" style="width:14px;height:14px"></div> A carregar feed RSS…</div>'; }
+  if (previewEl) previewEl.style.display = 'none';
+  if (importBtn) importBtn.disabled = true;
+  window._rssItems = [];
+
+  try {
+    // Tentar via CORS proxy para feeds externos
+    let xmlText = null;
+    const proxies = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+      `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`,
+    ];
+
+    // Tentar directo primeiro
+    try {
+      const res = await fetch(rssUrl, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('xml') || ct.includes('rss') || ct.includes('text')) {
+          xmlText = await res.text();
+        }
+      }
+    } catch (_) { /* CORS bloqueou, tenta proxy */ }
+
+    if (!xmlText) {
+      for (const proxyUrl of proxies) {
+        try {
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+          if (!res.ok) continue;
+          const json = await res.json();
+          xmlText = json.contents || json.data || null;
+          if (xmlText) break;
+        } catch (_) { continue; }
+      }
+    }
+
+    if (!xmlText) throw new Error('Não foi possível aceder ao feed RSS. Verifica o URL ou as permissões CORS.');
+
+    const items = _parseRssFeed(xmlText);
+    if (!items.length) throw new Error('Feed RSS válido mas sem episódios encontrados.');
+
+    // Guardar URL no podcast se mudou
+    const p = _podState.podcasts.find(x => String(x.id) === String(podcastId));
+    if (p && p.rss_url !== rssUrl && DB.ready()) {
+      await DB.upsertPodcast({ id: podcastId, rss_url: rssUrl });
+      if (p) p.rss_url = rssUrl;
+    }
+
+    // Episódios já existentes (para detectar duplicados)
+    const existingTitles = new Set(_podState.episodios.map(e => e.titulo?.toLowerCase().trim()));
+
+    window._rssItems = items.map(item => ({
+      ...item,
+      _exists: existingTitles.has((item.titulo || '').toLowerCase().trim()),
+    }));
+
+    if (itemsEl) {
+      itemsEl.innerHTML = window._rssItems.map((item, i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-elevated);border-radius:var(--radius-sm);${item._exists ? 'opacity:.5' : ''}">
+          <input type="checkbox" id="rss-item-${i}" data-idx="${i}" ${item._exists ? 'disabled' : 'checked'}>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.83rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escPod(item.titulo)}</div>
+            <div style="font-size:.7rem;color:var(--text-muted)">${item.data ? new Date(item.data).toLocaleDateString('pt-PT') : '—'} · ${item.duracao || ''}${item.audio_url ? ' · <i class="fa-solid fa-microphone" style="color:var(--accent)"></i>' : ''}${item._exists ? ' · <span style="color:var(--yellow)">já importado</span>' : ''}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    if (previewEl) previewEl.style.display = 'block';
+    if (importBtn) importBtn.disabled = false;
+    if (statusEl) statusEl.style.display = 'none';
+
+  } catch(e) {
+    if (statusEl) { statusEl.innerHTML = `<div style="color:var(--red);font-size:.83rem"><i class="fa-solid fa-circle-xmark"></i> ${escPod(e.message)}</div>`; }
+  }
+}
+
+/* Faz parse de um XML de RSS e devolve lista de episódios */
+function _parseRssFeed(xmlText) {
+  const parser = new DOMParser();
+  const doc    = parser.parseFromString(xmlText, 'text/xml');
+  const items  = [...doc.querySelectorAll('item')];
+
+  return items.map((item, i) => {
+    const get = tag => item.querySelector(tag)?.textContent?.trim() || '';
+    const getAttr = (tag, attr) => item.querySelector(tag)?.getAttribute(attr) || '';
+
+    // Enclosure (áudio/vídeo)
+    const enclosure = item.querySelector('enclosure');
+    const audioUrl  = enclosure?.getAttribute('url') || '';
+    const audioType = enclosure?.getAttribute('type') || '';
+    const isAudio   = audioType.startsWith('audio/') || audioUrl.match(/\.(mp3|m4a|ogg|wav|aac)(\?|$)/i);
+    const isVideo   = audioType.startsWith('video/') || audioUrl.match(/\.(mp4|webm|mov)(\?|$)/i);
+
+    // Duração iTunes
+    const duracaoStr = get('itunes\\:duration') || get('duration');
+    let duracao = null;
+    if (duracaoStr) {
+      const parts = duracaoStr.split(':').map(Number);
+      if (parts.length === 3) duracao = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      else if (parts.length === 2) duracao = parts[0] * 60 + parts[1];
+      else if (parts.length === 1 && !isNaN(parts[0])) duracao = parts[0];
+    }
+
+    // Número de episódio
+    const epNumStr = get('itunes\\:episode') || get('episode');
+    const numero   = epNumStr ? parseInt(epNumStr) : (items.length - i);
+
+    // Temporada
+    const tempStr    = get('itunes\\:season') || get('season');
+    const temporada  = tempStr ? parseInt(tempStr) : 1;
+
+    // Thumbnail
+    const thumbnail = getAttr('itunes\\:image', 'href') || get('media\\:thumbnail') || '';
+
+    return {
+      titulo:       get('title') || `Episódio ${numero}`,
+      descricao:    get('description') || get('itunes\\:summary') || '',
+      data:         get('pubDate') || get('published') || null,
+      audio_url:    isAudio ? audioUrl : '',
+      video_url:    isVideo ? audioUrl : '',
+      duracao,
+      numero,
+      temporada,
+      thumbnail_url: thumbnail,
+    };
+  });
+}
+
+/* Importa os episódios seleccionados do RSS */
+async function podImportRssEpisodes(podcastId) {
+  const items  = window._rssItems || [];
+  const checks = [...document.querySelectorAll('[id^=rss-item-]:checked:not(:disabled)')];
+  if (!checks.length) { app.toast('Selecciona pelo menos um episódio', 'warning'); return; }
+
+  const btn = document.getElementById('rss-import-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;display:inline-block"></div> A importar…'; }
+
+  const toImport = checks.map(cb => items[parseInt(cb.dataset.idx)]).filter(Boolean);
+  let ok = 0, fail = 0;
+
+  for (const item of toImport) {
+    const payload = {
+      id:           crypto.randomUUID(),
+      podcast_id:   podcastId,
+      titulo:       item.titulo,
+      descricao:    item.descricao || null,
+      numero:       item.numero || null,
+      temporada:    item.temporada || 1,
+      audio_url:    item.audio_url || null,
+      video_url:    item.video_url || null,
+      thumbnail_url:item.thumbnail_url || null,
+      duracao:      item.duracao || null,
+      status:       'rascunho',
+      agendado_para:item.data ? new Date(item.data).toISOString() : null,
+      plataformas:  _podState.selectedPodcast?.plataformas || [],
+    };
+
+    if (DB.ready()) {
+      const { error } = await DB.upsertEpisodio(payload);
+      if (error) { fail++; console.error('RSS import error:', error); }
+      else { ok++; _podState.episodios.unshift(payload); }
+    } else {
+      _podState.episodios.unshift(payload);
+      ok++;
+    }
+  }
+
+  app.toast(`${ok} episódio(s) importados do RSS${fail ? `, ${fail} falharam` : ''}!`, ok > 0 ? 'success' : 'error');
+  app.closeModal();
+
+  // Refrescar painel de episódios
+  const col = document.getElementById('pod-episodes-col');
+  if (col) col.innerHTML = _renderEpisodesPanel();
+}
+
+/* Guarda as definições RSS (URL + auto-publicar) */
+async function podSaveRssSettings(podcastId) {
+  const rssUrl    = document.getElementById('rss-url-input')?.value.trim() || null;
+  const autoPubl  = document.getElementById('rss-auto-publish')?.checked || false;
+
+  const payload = { id: podcastId, rss_url: rssUrl, rss_auto_publicar: autoPubl };
+
+  if (DB.ready()) {
+    const { error } = await DB.upsertPodcast(payload);
+    if (error) { app.toast('Erro ao guardar: ' + app.fmtErr(error), 'error'); return; }
+  }
+
+  const idx = _podState.podcasts.findIndex(p => String(p.id) === String(podcastId));
+  if (idx >= 0) _podState.podcasts[idx] = { ..._podState.podcasts[idx], ...payload };
+
+  app.toast('Definições RSS guardadas!', 'success');
+  app.closeModal();
+  renderPodcasts(document.getElementById('content'));
 }
