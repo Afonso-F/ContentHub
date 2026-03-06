@@ -595,23 +595,11 @@ const DB = (() => {
       .order('agendado_para', { ascending: true });
   }
 
-  /* Reset completo — apaga todos os dados de todas as tabelas */
+  /* Reset completo — chama função SQL com SECURITY DEFINER (contorna RLS) */
   async function resetAllData() {
     if (!_client) return { error: 'not connected' };
-    const tables = [
-      'fansly_stats','onlyfans_stats','patreon_stats','twitch_stats',
-      'afiliados','vendas_diretas','levantamentos','contas_bancarias',
-      'publicados','musico_tracks','episodios',
-      'posts','contas','youtube_videos','youtube_channels',
-      'musicos','podcasts','campanhas','despesas','prompt_library',
-      'avatares',
-    ];
-    const errors = [];
-    for (const table of tables) {
-      const { error } = await _client.from(table).delete().not('id', 'is', null);
-      if (error && error.code !== '42P01') errors.push(`${table}: ${error.message}`);
-    }
-    return errors.length ? { error: errors.join('; ') } : { ok: true };
+    const { error } = await _client.rpc('reset_all_data');
+    return error ? { error: error.message } : { ok: true };
   }
 
   return { init, client, ready, getAvatares, upsertAvatar, deleteAvatar, updateAvatarRefImages, getPosts, upsertPost, deletePost, updatePostStatus, getPublicados, getAnalytics, getContas, upsertConta, deleteConta, signIn, signOut, getSession, onAuthStateChange, uploadPostImage, uploadAvatarReferenceImage, uploadPostVideo, uploadPostVideoFromUrl, getYoutubeChannels, upsertYoutubeChannel, deleteYoutubeChannel, updateYoutubeRefImages, uploadYoutubeReferenceImage, getYoutubeVideos, upsertYoutubeVideo, deleteYoutubeVideo, getMusicos, upsertMusico, deleteMusico, getMusicoTracks, upsertMusicoTrack, deleteMusicoTrack, getFanslyStats, upsertFanslyStats, getDespesas, upsertDespesa, deleteDespesa, getCampanhas, upsertCampanha, deleteCampanha, getCampanhaPosts, getPostTemplates, upsertPostTemplate, deletePostTemplate, getPromptLibrary, upsertPromptEntry, deletePromptEntry, incrementPromptUsage, uploadLibraryImage, getOnlyfansStats, upsertOnlyfansStats, getPatreonStats, upsertPatreonStats, getTwitchStats, upsertTwitchStats, getAfiliados, upsertAfiliado, deleteAfiliado, getVendasDiretas, upsertVendaDireta, deleteVendaDireta, getContasBancarias, upsertContaBancaria, deleteContaBancaria, getLevantamentos, upsertLevantamento, getPodcasts, upsertPodcast, deletePodcast, getEpisodios, upsertEpisodio, deleteEpisodio, uploadPodcastAudio, uploadPodcastCover, resetAllData };
