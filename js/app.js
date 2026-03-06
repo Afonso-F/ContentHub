@@ -38,11 +38,43 @@ const app = (() => {
   let _changelog = [];
   let _navId = 0;
 
+  // Map each group id → the sections it contains
+  const _navGroups = {
+    factory:    ['channels', 'avatar-studio', 'pipeline', 'podcast-gen', 'shorts-factory'],
+    automation: ['factory-setup', 'fila', 'scheduler'],
+    content:    ['avatares', 'youtube', 'podcasts', 'videos', 'musicos', 'publicados', 'biblioteca', 'campanhas'],
+    analytics:  ['analytics', 'analises', 'monetizacao', 'despesas', 'pagamentos'],
+  };
+
+  function _expandGroupForSection(section) {
+    Object.entries(_navGroups).forEach(([groupId, sectionList]) => {
+      const groupEl = document.getElementById(`group-${groupId}`);
+      if (!groupEl) return;
+      const header = groupEl.querySelector('.nav-group-header');
+      if (sectionList.includes(section)) {
+        groupEl.classList.add('open');
+        header && header.setAttribute('aria-expanded', 'true');
+        header && header.classList.add('has-active');
+      } else {
+        header && header.classList.remove('has-active');
+      }
+    });
+  }
+
   /* ── Init ── */
   function init() {
     // Sidebar toggle
     document.getElementById('sidebarToggle').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('collapsed');
+    });
+
+    // Nav group toggles
+    document.querySelectorAll('.nav-group-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.closest('.nav-group');
+        const isOpen = group.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(isOpen));
+      });
     });
 
     // Nav clicks
@@ -216,10 +248,13 @@ const app = (() => {
     current = section;
     location.hash = section;
 
-    // Update nav
+    // Update nav items
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.section === section);
     });
+
+    // Auto-expand the group that owns this section
+    _expandGroupForSection(section);
 
     // Update title
     document.getElementById('pageTitle').textContent = sections[section].title;

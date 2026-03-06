@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>ContentHub</title>
-  <link rel="stylesheet" href="css/style.css?v=20260303" />
+  <link rel="stylesheet" href="css/style.css?v=20260306g" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -23,110 +23,148 @@
       </button>
     </div>
     <nav class="sidebar-nav">
+
+      <!-- Dashboard -->
       <a href="#dashboard" class="nav-item active" data-section="dashboard">
         <i class="fa-solid fa-industry"></i>
         <span>Dashboard</span>
       </a>
 
-      <div class="nav-section-label">Factory</div>
+      <!-- Factory group -->
+      <div class="nav-group" id="group-factory">
+        <button class="nav-group-header" data-group="factory" aria-expanded="false">
+          <div class="nav-group-title">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Factory</span>
+          </div>
+          <i class="fa-solid fa-chevron-right nav-group-arrow"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="#channels" class="nav-item nav-child" data-section="channels">
+            <i class="fa-brands fa-youtube"></i>
+            <span>Channels</span>
+          </a>
+          <a href="#avatar-studio" class="nav-item nav-child" data-section="avatar-studio">
+            <i class="fa-solid fa-masks-theater"></i>
+            <span>Avatar Studio</span>
+          </a>
+          <a href="#pipeline" class="nav-item nav-child" data-section="pipeline">
+            <i class="fa-solid fa-film"></i>
+            <span>AI Video Generator</span>
+          </a>
+          <a href="#podcast-gen" class="nav-item nav-child" data-section="podcast-gen">
+            <i class="fa-solid fa-microphone-lines"></i>
+            <span>Podcast Generator</span>
+          </a>
+          <a href="#shorts-factory" class="nav-item nav-child" data-section="shorts-factory">
+            <i class="fa-solid fa-mobile-screen"></i>
+            <span>Shorts Factory</span>
+          </a>
+        </div>
+      </div>
 
-      <a href="#channels" class="nav-item" data-section="channels">
-        <i class="fa-brands fa-youtube"></i>
-        <span>Channels</span>
-      </a>
-      <a href="#avatar-studio" class="nav-item" data-section="avatar-studio">
-        <i class="fa-solid fa-masks-theater"></i>
-        <span>Avatar Studio</span>
-      </a>
-      <a href="#pipeline" class="nav-item" data-section="pipeline">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
-        <span>AI Video Generator</span>
-      </a>
-      <a href="#podcast-gen" class="nav-item" data-section="podcast-gen">
-        <i class="fa-solid fa-microphone-lines"></i>
-        <span>Podcast Generator</span>
-      </a>
-      <a href="#shorts-factory" class="nav-item" data-section="shorts-factory">
-        <i class="fa-solid fa-mobile-screen"></i>
-        <span>Shorts Factory</span>
-      </a>
+      <!-- Automation group -->
+      <div class="nav-group" id="group-automation">
+        <button class="nav-group-header" data-group="automation" aria-expanded="false">
+          <div class="nav-group-title">
+            <i class="fa-solid fa-robot"></i>
+            <span>Automation</span>
+          </div>
+          <i class="fa-solid fa-chevron-right nav-group-arrow"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="#factory-setup" class="nav-item nav-child" data-section="factory-setup">
+            <i class="fa-solid fa-rocket"></i>
+            <span>AI Factory Setup</span>
+          </a>
+          <a href="#fila" class="nav-item nav-child" data-section="fila">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>Upload Queue</span>
+          </a>
+          <a href="#scheduler" class="nav-item nav-child" data-section="scheduler">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Scheduler</span>
+          </a>
+        </div>
+      </div>
 
-      <div class="nav-section-label">Automation</div>
+      <!-- Content group -->
+      <div class="nav-group" id="group-content">
+        <button class="nav-group-header" data-group="content" aria-expanded="false">
+          <div class="nav-group-title">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Conteúdo</span>
+          </div>
+          <i class="fa-solid fa-chevron-right nav-group-arrow"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="#avatares" class="nav-item nav-child" data-section="avatares">
+            <i class="fa-solid fa-user-circle"></i>
+            <span>Avatares</span>
+          </a>
+          <a href="#youtube" class="nav-item nav-child" data-section="youtube">
+            <i class="fa-solid fa-video"></i>
+            <span>Canais de Vídeo</span>
+          </a>
+          <a href="#podcasts" class="nav-item nav-child" data-section="podcasts">
+            <i class="fa-solid fa-microphone"></i>
+            <span>Podcasts</span>
+          </a>
+          <a href="#videos" class="nav-item nav-child" data-section="videos">
+            <i class="fa-solid fa-clapperboard"></i>
+            <span>Vídeos Curtos</span>
+          </a>
+          <a href="#musicos" class="nav-item nav-child" data-section="musicos">
+            <i class="fa-solid fa-music"></i>
+            <span>Músicos & Bandas</span>
+          </a>
+          <a href="#publicados" class="nav-item nav-child" data-section="publicados">
+            <i class="fa-solid fa-database"></i>
+            <span>Publicados</span>
+          </a>
+          <a href="#biblioteca" class="nav-item nav-child" data-section="biblioteca">
+            <i class="fa-solid fa-images"></i>
+            <span>Biblioteca</span>
+          </a>
+          <a href="#campanhas" class="nav-item nav-child" data-section="campanhas">
+            <i class="fa-solid fa-bullhorn"></i>
+            <span>Campanhas</span>
+          </a>
+        </div>
+      </div>
 
-      <a href="#factory-setup" class="nav-item" data-section="factory-setup">
-        <i class="fa-solid fa-rocket"></i>
-        <span>AI Factory Setup</span>
-      </a>
-      <a href="#fila" class="nav-item" data-section="fila">
-        <i class="fa-solid fa-calendar-days"></i>
-        <span>Upload Queue</span>
-      </a>
-      <a href="#scheduler" class="nav-item" data-section="scheduler">
-        <i class="fa-solid fa-robot"></i>
-        <span>Scheduler</span>
-      </a>
-
-      <div class="nav-section-label">Analytics</div>
-
-      <a href="#analytics" class="nav-item" data-section="analytics">
-        <i class="fa-solid fa-chart-bar"></i>
-        <span>Analytics</span>
-      </a>
-      <a href="#monetizacao" class="nav-item" data-section="monetizacao">
-        <i class="fa-solid fa-euro-sign"></i>
-        <span>Monetização</span>
-      </a>
-
-      <div class="nav-section-label">Conteúdos</div>
-
-      <a href="#avatares" class="nav-item" data-section="avatares">
-        <i class="fa-solid fa-user-circle"></i>
-        <span>Avatares</span>
-      </a>
-      <a href="#youtube" class="nav-item" data-section="youtube">
-        <i class="fa-solid fa-video"></i>
-        <span>Canais de Vídeo</span>
-      </a>
-      <a href="#podcasts" class="nav-item" data-section="podcasts">
-        <i class="fa-solid fa-microphone"></i>
-        <span>Podcasts</span>
-      </a>
-      <a href="#videos" class="nav-item" data-section="videos">
-        <i class="fa-solid fa-clapperboard"></i>
-        <span>Vídeos Curtos</span>
-      </a>
-      <a href="#musicos" class="nav-item" data-section="musicos">
-        <i class="fa-solid fa-music"></i>
-        <span>Músicos & Bandas</span>
-      </a>
-      <a href="#criar" class="nav-item" data-section="criar">
-        <i class="fa-solid fa-plus-circle"></i>
-        <span>Criar Post</span>
-      </a>
-      <a href="#publicados" class="nav-item" data-section="publicados">
-        <i class="fa-solid fa-database"></i>
-        <span>Publicados</span>
-      </a>
-      <a href="#biblioteca" class="nav-item" data-section="biblioteca">
-        <i class="fa-solid fa-images"></i>
-        <span>Biblioteca</span>
-      </a>
-      <a href="#campanhas" class="nav-item" data-section="campanhas">
-        <i class="fa-solid fa-bullhorn"></i>
-        <span>Campanhas</span>
-      </a>
-      <a href="#analises" class="nav-item" data-section="analises">
-        <i class="fa-solid fa-chart-line"></i>
-        <span>Análises</span>
-      </a>
-      <a href="#despesas" class="nav-item" data-section="despesas">
-        <i class="fa-solid fa-receipt"></i>
-        <span>Despesas</span>
-      </a>
-      <a href="#pagamentos" class="nav-item" data-section="pagamentos">
-        <i class="fa-solid fa-money-bill-transfer"></i>
-        <span>Pagamentos</span>
-      </a>
+      <!-- Analytics & Finance group (merged) -->
+      <div class="nav-group" id="group-analytics">
+        <button class="nav-group-header" data-group="analytics" aria-expanded="false">
+          <div class="nav-group-title">
+            <i class="fa-solid fa-chart-bar"></i>
+            <span>Analytics & Finance</span>
+          </div>
+          <i class="fa-solid fa-chevron-right nav-group-arrow"></i>
+        </button>
+        <div class="nav-group-items">
+          <a href="#analytics" class="nav-item nav-child" data-section="analytics">
+            <i class="fa-solid fa-chart-bar"></i>
+            <span>Analytics</span>
+          </a>
+          <a href="#analises" class="nav-item nav-child" data-section="analises">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Análises</span>
+          </a>
+          <a href="#monetizacao" class="nav-item nav-child" data-section="monetizacao">
+            <i class="fa-solid fa-euro-sign"></i>
+            <span>Monetização</span>
+          </a>
+          <a href="#despesas" class="nav-item nav-child" data-section="despesas">
+            <i class="fa-solid fa-receipt"></i>
+            <span>Despesas</span>
+          </a>
+          <a href="#pagamentos" class="nav-item nav-child" data-section="pagamentos">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Pagamentos</span>
+          </a>
+        </div>
+      </div>
 
       <div class="nav-divider"></div>
       <a href="#configuracoes" class="nav-item" data-section="configuracoes">
@@ -222,38 +260,38 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script src="js/config.js?v=20260306f"></script>
-  <script src="js/supabase-client.js?v=20260306f"></script>
-  <script src="js/mistral.js?v=20260306f"></script>
-  <script src="js/prompts-library.js?v=20260306f"></script>
+  <script src="js/config.js?v=20260306g"></script>
+  <script src="js/supabase-client.js?v=20260306g"></script>
+  <script src="js/mistral.js?v=20260306g"></script>
+  <script src="js/prompts-library.js?v=20260306g"></script>
   <!-- ── AI YouTube Factory modules ── -->
-  <script src="js/sections/channels.js?v=20260306f"></script>
-  <script src="js/sections/avatar-studio.js?v=20260306f"></script>
-  <script src="js/sections/video-pipeline.js?v=20260306f"></script>
-  <script src="js/sections/podcast-generator.js?v=20260306f"></script>
-  <script src="js/sections/shorts-factory.js?v=20260306f"></script>
-  <script src="js/sections/scheduler.js?v=20260306f"></script>
-  <script src="js/sections/factory-setup.js?v=20260306f"></script>
-  <script src="js/sections/analytics.js?v=20260306f"></script>
+  <script src="js/sections/channels.js?v=20260306g"></script>
+  <script src="js/sections/avatar-studio.js?v=20260306g"></script>
+  <script src="js/sections/video-pipeline.js?v=20260306g"></script>
+  <script src="js/sections/podcast-generator.js?v=20260306g"></script>
+  <script src="js/sections/shorts-factory.js?v=20260306g"></script>
+  <script src="js/sections/scheduler.js?v=20260306g"></script>
+  <script src="js/sections/factory-setup.js?v=20260306g"></script>
+  <script src="js/sections/analytics.js?v=20260306g"></script>
   <!-- ── Existing sections ── -->
-  <script src="js/sections/dashboard.js?v=20260306f"></script>
-  <script src="js/sections/avatares.js?v=20260306f"></script>
-  <script src="js/sections/youtube-channels.js?v=20260306f"></script>
-  <script src="js/sections/musicos.js?v=20260306f"></script>
-  <script src="js/sections/monetizacao.js?v=20260306f"></script>
-  <script src="js/sections/criar-post.js?v=20260306f"></script>
-  <script src="js/sections/videos-curtos.js?v=20260306f"></script>
-  <script src="js/sections/fila.js?v=20260306f"></script>
-  <script src="js/sections/publicados.js?v=20260306f"></script>
-  <script src="js/sections/analises.js?v=20260306f"></script>
-  <script src="js/sections/biblioteca.js?v=20260306f"></script>
-  <script src="js/sections/despesas.js?v=20260306f"></script>
-  <script src="js/sections/campanhas.js?v=20260306f"></script>
-  <script src="js/stripe-client.js?v=20260306f"></script>
-  <script src="js/sections/pagamentos.js?v=20260306f"></script>
-  <script src="js/sections/podcasts.js?v=20260306f"></script>
-  <script src="js/sections/configuracoes.js?v=20260306f"></script>
-  <script src="js/app.js?v=20260306f"></script>
-  <script src="js/chatbot.js?v=20260306f"></script>
+  <script src="js/sections/dashboard.js?v=20260306g"></script>
+  <script src="js/sections/avatares.js?v=20260306g"></script>
+  <script src="js/sections/youtube-channels.js?v=20260306g"></script>
+  <script src="js/sections/musicos.js?v=20260306g"></script>
+  <script src="js/sections/monetizacao.js?v=20260306g"></script>
+  <script src="js/sections/criar-post.js?v=20260306g"></script>
+  <script src="js/sections/videos-curtos.js?v=20260306g"></script>
+  <script src="js/sections/fila.js?v=20260306g"></script>
+  <script src="js/sections/publicados.js?v=20260306g"></script>
+  <script src="js/sections/analises.js?v=20260306g"></script>
+  <script src="js/sections/biblioteca.js?v=20260306g"></script>
+  <script src="js/sections/despesas.js?v=20260306g"></script>
+  <script src="js/sections/campanhas.js?v=20260306g"></script>
+  <script src="js/stripe-client.js?v=20260306g"></script>
+  <script src="js/sections/pagamentos.js?v=20260306g"></script>
+  <script src="js/sections/podcasts.js?v=20260306g"></script>
+  <script src="js/sections/configuracoes.js?v=20260306g"></script>
+  <script src="js/app.js?v=20260306g"></script>
+  <script src="js/chatbot.js?v=20260306g"></script>
 </body>
 </html>
