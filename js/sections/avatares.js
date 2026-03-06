@@ -991,6 +991,22 @@ async function saveAvatarOnlyfansStats(avatarId, mes, existingId) {
 }
 
 /* ── Contas de redes sociais ── */
+async function removeContaCard(btn, contaId) {
+  if (!DB.ready()) return;
+  const card = btn.closest('[data-plataforma]');
+  if (contaId) {
+    const { error } = await DB.deleteConta(contaId);
+    if (error) { app.toast('Erro ao remover conta', 'error'); return; }
+  }
+  card.querySelectorAll('input[data-field]').forEach(i => { i.value = ''; });
+  card.querySelector('[data-field="id"]').value = '';
+  const badge = card.querySelector('.badge');
+  if (badge) { badge.className = 'badge badge-muted'; badge.textContent = 'Não configurado'; }
+  btn.remove();
+  app.toast('Conta removida', 'success');
+}
+
+
 const PLATAFORMAS_INFO = {
   instagram:   { label: 'Instagram',   icon: 'fa-brands fa-instagram icon-instagram',   placeholder_id: 'Ex: 17841400000000000', placeholder_user: 'Ex: @minha_conta' },
   tiktok:      { label: 'TikTok',      icon: 'fa-brands fa-tiktok icon-tiktok',         placeholder_id: 'Ex: 6784563210987654',   placeholder_user: 'Ex: @minha_conta' },
@@ -1024,7 +1040,8 @@ async function openContasModal(avatarId, avatarNome) {
           <div style="background:var(--bg-elevated);border-radius:10px;padding:14px" data-plataforma="${p}">
             <div class="flex items-center gap-2 mb-2" style="font-weight:600">
               <i class="${info.icon}"></i> ${info.label}
-              ${c.id ? `<span class="badge badge-green" style="margin-left:auto">Configurado</span>` : `<span class="badge badge-muted" style="margin-left:auto">Não configurado</span>`}
+              <span class="badge ${c.id ? 'badge-green' : 'badge-muted'}" style="margin-left:auto">${c.id ? 'Configurado' : 'Não configurado'}</span>
+              ${c.id ? `<button class="btn btn-sm btn-icon" style="color:var(--red,#ef4444);padding:2px 6px" title="Remover conta" onclick="removeContaCard(this,'${escHtml(c.id)}')"><i class="fa-solid fa-trash"></i></button>` : ''}
             </div>
             <div class="grid-2" style="gap:8px">
               <div>
@@ -1065,7 +1082,7 @@ async function saveContas(avatarId) {
   if (!DB.ready()) return;
 
   const blocos = document.querySelectorAll('#contas-list [data-plataforma]');
-  let saved = 0, errors = 0;
+  let saved = 0, errors = 0, removed = 0;
 
   for (const bloco of blocos) {
     const plataforma = bloco.dataset.plataforma;
@@ -1077,7 +1094,13 @@ async function saveContas(avatarId) {
     const notas        = get('notas');
     const existingId   = get('id');
 
-    if (!username && !conta_id && !access_token) continue;
+    if (!username && !conta_id && !access_token) {
+      if (existingId) {
+        const { error } = await DB.deleteConta(existingId);
+        if (error) errors++; else removed++;
+      }
+      continue;
+    }
 
     const payload = { avatar_id: avatarId, plataforma, username, conta_id, access_token, notas };
     if (existingId) payload.id = existingId;
@@ -1088,8 +1111,8 @@ async function saveContas(avatarId) {
   }
 
   if (errors) app.toast(`${errors} erro(s) ao guardar`, 'error');
-  else if (saved) app.toast(`${saved} conta(s) guardada(s)!`, 'success');
+  else if (saved || removed) app.toast(`${saved} guardada(s)${removed ? ', ' + removed + ' removida(s)' : ''}`, 'success');
   else app.toast('Nenhuma alteração para guardar', 'info');
 
-  app.closeModal();
+  openAvatarDashboard(avatarId);
 }
