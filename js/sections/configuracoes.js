@@ -185,9 +185,15 @@ function renderConfiguracoes(container) {
     <!-- Danger zone -->
     <div class="settings-section" style="border-color:var(--red-soft)">
       <div class="settings-section-title" style="color:var(--red)"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red)"></i> Zona de perigo</div>
-      <button class="btn btn-danger btn-sm" onclick="clearAllConfig()">
-        <i class="fa-solid fa-trash"></i> Limpar todas as API keys
-      </button>
+      <div class="flex gap-2 flex-wrap">
+        <button class="btn btn-danger btn-sm" onclick="clearAllConfig()">
+          <i class="fa-solid fa-key"></i> Limpar todas as API keys
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="resetAllData()">
+          <i class="fa-solid fa-trash"></i> Apagar todos os dados
+        </button>
+      </div>
+      <div class="form-hint mt-2" style="color:var(--red)">Apagar todos os dados remove avatares, canais, contas, posts e estatísticas do Supabase e do localStorage. Irreversível.</div>
     </div>`;
 }
 
@@ -294,6 +300,31 @@ async function testStripe() {
     el.innerHTML = `<span style="color:var(--red)"><i class="fa-solid fa-circle-xmark"></i> Erro: ${e.message}</span>`;
     app.toast('Erro Stripe: ' + e.message, 'error');
   }
+}
+
+async function resetAllData() {
+  if (!confirm('Tens a certeza? Esta ação apaga TODOS os avatares, canais, contas, posts e estatísticas. É irreversível.')) return;
+  if (!confirm('Confirma: apagar tudo e começar do zero?')) return;
+
+  app.toast('A limpar dados…', 'info');
+
+  // Limpar localStorage (factory, scheduler, fila)
+  ['yt_factory_channels','yt_studio_avatars','yt_factory_schedules','upload_queue'].forEach(k => localStorage.removeItem(k));
+
+  // Limpar Supabase
+  if (DB.ready()) {
+    const { error } = await DB.resetAllData();
+    if (error) {
+      app.toast('Erro parcial: ' + error, 'error');
+    } else {
+      app.toast('Todos os dados apagados!', 'success');
+    }
+  } else {
+    app.toast('localStorage limpo (Supabase não ligado)', 'success');
+  }
+
+  // Recarregar app
+  setTimeout(() => location.reload(), 1200);
 }
 
 function clearAllConfig() {

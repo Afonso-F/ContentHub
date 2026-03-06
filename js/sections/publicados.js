@@ -80,9 +80,9 @@ async function loadPublicados() {
   tbody.innerHTML = `<tr><td colspan="7"><div class="loading-overlay" style="padding:30px"><div class="spinner"></div></div></td></tr>`;
 
   if (!DB.ready()) {
-    tbody.innerHTML = renderPubDemoRows();
-    document.getElementById('pub-total').textContent = 'Demo — ligue o Supabase';
-    renderPubPagination(1, 0);
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:40px"><i class="fa-solid fa-database"></i><p>Supabase não ligado.<br><span class="text-muted text-sm">Configura a ligação em Configurações.</span></p></div></td></tr>`;
+    document.getElementById('pub-total').textContent = '—';
+    renderPubPagination(0, 0);
     return;
   }
 
@@ -136,24 +136,6 @@ async function loadPublicados() {
   renderPubPagination(Math.ceil(total / PUB_PAGE_SIZE), page);
 }
 
-function renderPubDemoRows() {
-  const demo = [
-    { platform: 'instagram', caption: 'Bom dia! Começa o dia com energia ☀️', likes: 1240, comments: 88, views: 9400, date: '2024-01-15', avatar: 'Luna 🌙' },
-    { platform: 'tiktok',    caption: 'Tutorial: 5 hacks de produtividade',    likes: 4500, comments: 312, views: 62000, date: '2024-01-14', avatar: 'Aria ⚡' },
-    { platform: 'instagram', caption: 'OOTD: look minimalista para o trabalho', likes: 2100, comments: 145, views: 18000, date: '2024-01-13', avatar: 'Zara ✨' },
-    { platform: 'youtube',   caption: 'Treino HIIT 20min sem equipamento',     likes: 890,  comments: 67, views: 24000, date: '2024-01-12', avatar: 'Nova 🔥' },
-  ];
-  return demo.map(p => `
-    <tr>
-      <td><div class="flex items-center gap-1"><div class="post-thumb" style="width:40px;height:40px;font-size:1rem"><i class="fa-regular fa-image"></i></div><span>${p.caption}</span></div></td>
-      <td>${p.avatar}</td>
-      <td>${app.platformIcon(p.platform)} ${p.platform}</td>
-      <td class="text-muted">${p.date}</td>
-      <td class="text-right font-bold">${app.formatNumber(p.likes)}</td>
-      <td class="text-right">${app.formatNumber(p.comments)}</td>
-      <td class="text-right">${app.formatNumber(p.views)}</td>
-    </tr>`).join('');
-}
 
 function renderPubPagination(totalPages, current) {
   const el = document.getElementById('pub-pagination');
