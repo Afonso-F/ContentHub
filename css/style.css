@@ -1242,17 +1242,6 @@ select.form-control { appearance: none; cursor: pointer; }
   transition: width 0.6s ease;
 }
 
-/* Sidebar - new section labels */
-.nav-section-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  padding: 12px 16px 4px;
-  opacity: 0.6;
-}
-
 /* ── Nav Groups (collapsible) ── */
 .nav-group { display: flex; flex-direction: column; }
 
