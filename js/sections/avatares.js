@@ -107,6 +107,7 @@ function renderAvatarCard(a, isActive) {
           ? `<button class="btn btn-sm btn-secondary flex-1" onclick="setActiveAvatar('${a.id}')"><i class="fa-solid fa-star"></i> Ativar</button>`
           : '<span class="btn btn-sm btn-secondary flex-1 text-center" style="cursor:default;opacity:.5"><i class="fa-solid fa-star"></i> Ativo</span>'}
         <button class="btn btn-sm btn-secondary btn-icon" onclick="openAvatarDashboard('${a.id}')" title="Dashboard — canais, contas, receitas"><i class="fa-solid fa-table-columns" style="color:var(--accent)"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="openMonthlyPlannerModal('${a.id}')" title="Plano Mensal de Conteúdo"><i class="fa-solid fa-calendar-days" style="color:var(--green)"></i></button>
         <button class="btn btn-sm btn-secondary btn-icon" onclick="openAvatarModal('${a.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-sm btn-danger btn-icon" onclick="confirmDeleteAvatar('${a.id}', this.dataset.nome)" data-nome="${escHtml(a.nome)}" title="Apagar"><i class="fa-solid fa-trash"></i></button>
       </div>
